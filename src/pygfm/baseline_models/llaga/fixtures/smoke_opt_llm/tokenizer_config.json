@@ -1,0 +1,10 @@
+{
+  "backend": "tokenizers",
+  "bos_token": "<s>",
+  "eos_token": "</s>",
+  "model_max_length": 1536,
+  "pad_token": "<pad>",
+  "padding_side": "right",
+  "tokenizer_class": "TokenizersBackend",
+  "unk_token": "<unk>"
+}

@@ -1,0 +1,12 @@
+# Batch 1-shot × many tasks — scripts/mdgfm/run_1shot_100task.py
+# Usage: python scripts/mdgfm/run_1shot_100task.py (driver has no -c; reference only)
+
+datasets: null
+task_num: 100
+ckpt_dir: ckpts/mdgfm
+downstream_root: downstream_data/mdgfm
+no_swanlab: false
+node_only: false
+graph_only: false
+finetune_config: null
+finetune_graph_config: null

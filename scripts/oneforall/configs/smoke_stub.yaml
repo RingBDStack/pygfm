@@ -1,0 +1,12 @@
+# llm_name: stub — no Hugging Face sentence-encoder download. With cora_node and local ``datasets/oneforall/Cora.pt``, graph data should not auto-download.
+# python scripts/oneforall/run.py -c scripts/oneforall/configs/smoke_stub.yaml
+task_names:
+  - cora_node
+train_sample_size: 256
+eval_sample_size: 128
+num_workers: 0
+num_epochs: 1
+batch_size: 8
+logger_backend: none
+offline_log: true
+llm_name: stub

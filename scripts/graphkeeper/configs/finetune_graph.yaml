@@ -1,0 +1,18 @@
+# GraphKeeper graph-level few-shot finetune — scripts/graphkeeper/finetune_graph.py (reference; no -c)
+
+dataset: Cora
+k_shot: 1
+ckpt: null
+data_root: datasets/graphkeeper
+downstream_root: downstream_data/graphkeeper
+seed: 42
+lr: 0.001
+patience: 50
+max_steps: 400
+test_reserve: 1000
+max_one_hop: 10
+max_two_hop: 4
+lora_rank: 128
+lora_scale: 1.0
+no_swanlab: false
+swanlab_project: gfm-toolbox-graphkeeper

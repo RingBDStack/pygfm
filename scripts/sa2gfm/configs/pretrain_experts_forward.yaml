@@ -1,0 +1,20 @@
+# Forwarded to each expert pretrain.py when using pretrain_experts_for_downstream.py after `--`.
+# Example:
+#   python scripts/sa2gfm/pretrain_experts_for_downstream.py --target cora --dry_run \\
+#     -- -c scripts/sa2gfm/configs/pretrain_experts_forward.yaml
+
+dataset: cora
+seed: 39
+gpu: 0
+hid_units: 256
+out_channels: 64
+num_layers: 2
+dropout: 0.2
+lr: 1.0e-5
+l2_coef: 0.0
+nb_epochs: 3000
+patience: 200
+eval_steps: 10
+neg_samples: 50
+kl_weight: 0.0
+output: ""

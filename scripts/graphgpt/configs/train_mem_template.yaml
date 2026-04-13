@@ -1,0 +1,34 @@
+# GraphGPT train_mem (stage-1 style). Adjust paths to your machine.
+# Run: python scripts/graphgpt/run_with_config.py -c scripts/graphgpt/configs/train_mem_template.yaml
+model_name_or_path: facebook/opt-125m
+version: v1
+data_path: datasets/graphgpt/stage_1/graph_matching.json
+graph_content: datasets/graphgpt/arxiv_ti_ab.json
+graph_data_path: datasets/graphgpt/graph_data/all_graph_data.pt
+graph_tower: clip_gt_arxiv
+tune_graph_mlp_adapter: true
+graph_select_layer: -2
+use_graph_start_end: true
+bf16: false
+fp16: false
+output_dir: ckpts/graphgpt/checkpoints/stage1_run
+num_train_epochs: 1
+max_steps: 500
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 4
+eval_strategy: no
+save_strategy: steps
+save_steps: 15
+save_total_limit: 1
+learning_rate: 2e-3
+weight_decay: 0.0
+warmup_ratio: 0.03
+lr_scheduler_type: cosine
+logging_steps: 1
+tf32: true
+model_max_length: 2048
+gradient_checkpointing: true
+lazy_preprocess: true
+report_to: none
+dataloader_num_workers: 0

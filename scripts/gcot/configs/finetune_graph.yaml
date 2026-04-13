@@ -1,0 +1,24 @@
+# GCoT graph-level few-shot finetune — scripts/gcot/finetune_graph.py
+# Driver has no -c merge; use as a CLI reference (pass flags manually).
+
+dataset: Cora
+k_shot: 1
+ckpt: null
+downstream_root: downstream_data/gcot
+splits_path: null
+split_id: 0
+task_num: 0
+data_root: datasets/gcot
+seed: 42
+lr: 0.001
+patience: 50
+max_steps: 400
+test_reserve: 1000
+max_one_hop: 10
+max_two_hop: 4
+condition_hid_dim: 128
+think_layer_num: 1
+condition_layer_num: 1
+no_swanlab: false
+swanlab_project: gfm-toolbox-gcot
+swanlab_run_name: null

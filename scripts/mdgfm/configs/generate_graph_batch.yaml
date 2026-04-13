@@ -1,0 +1,17 @@
+# Graph-level few-shot splits — scripts/mdgfm/generate_downstream.py
+# Usage: python scripts/mdgfm/generate_downstream.py graph_batch --dataset Cora --k_shot 1
+# (No -c merge in driver; reference template.)
+
+dataset: Cora
+data_root: datasets/mdgfm
+downstream_root: downstream_data/mdgfm
+output_dir: null
+data_path: null
+k_shot: 1
+n_splits: 100
+n_way: 0
+test_reserve: 1000
+seed: 42
+max_one_hop: 10
+max_two_hop: 4
+n_jobs: 4

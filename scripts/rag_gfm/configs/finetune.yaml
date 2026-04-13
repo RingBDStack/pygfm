@@ -1,0 +1,19 @@
+# RAG-GFM node few-shot finetune (shared DownPrompt) — scripts/rag_gfm/finetune.py
+# Driver has no -c merge (export flags only). Use as a CLI reference; --ckpt is required at runtime.
+
+dataset: Cora
+k_shot: 1
+ckpt: ckpts/rag_gfm/cora/preprompt_cora.pth
+downstream_root: downstream_data/rag_gfm
+splits_path: null
+split_id: 0
+task_num: 0
+data_root: datasets/rag_gfm
+seed: 42
+lr: 0.001
+patience: 50
+max_steps: 400
+test_reserve: 1000
+no_swanlab: false
+swanlab_project: gfmtoolbox_raggfm
+swanlab_run_name: null

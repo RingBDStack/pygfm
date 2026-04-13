@@ -1,0 +1,164 @@
+Metadata-Version: 2.4
+Name: python-gfm
+Version: 0.1.7
+Summary: An AI copilot for graph data and models (Under active development).
+Author-email: BUAA SKLCCSE <your.email@example.com>
+License: Apache-2.0
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.20
+Requires-Dist: pyyaml>=6
+Provides-Extra: torch
+Requires-Dist: torch==2.8.0; extra == "torch"
+Requires-Dist: torch-geometric>=2.3.0; extra == "torch"
+Requires-Dist: torch-scatter==2.1.2; extra == "torch"
+Requires-Dist: torch-sparse==0.6.18; extra == "torch"
+Requires-Dist: torch-cluster==1.6.3; extra == "torch"
+Requires-Dist: torch-spline-conv==1.2.2; extra == "torch"
+Requires-Dist: scipy>=1.9.0; extra == "torch"
+Requires-Dist: transformers>=4.36.0; extra == "torch"
+Requires-Dist: joblib>=1.3.0; extra == "torch"
+Requires-Dist: scikit-learn>=1.3.0; extra == "torch"
+Requires-Dist: ftfy>=6.1.0; extra == "torch"
+Requires-Dist: regex>=2023.0.0; extra == "torch"
+Requires-Dist: accelerate>=0.26.0; extra == "torch"
+Requires-Dist: fschat>=0.2.36; extra == "torch"
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+
+# pygfm
+
+[PyPI version](https://pypi.org/project/pygfm/)
+[Python](https://pypi.org/project/pygfm/)
+[License](LICENSE)
+
+A unified Python toolkit for **Graph Foundation Models (GFM)** research, integrating 19 baseline methods under a single package with shared utilities, standardized interfaces, and reproducible experiment pipelines.
+
+Developed by **Beihang University, School of Computer Science and Engineering, ACT Lab, MAGIC GROUP**.
+
+## Installation
+
+```bash
+pip install python-gfm
+```
+
+Install with optional dependencies:
+
+```bash
+pip install python-gfm[torch]   # PyTorch + PyG
+pip install python-gfm[dev]     # pytest + ruff
+```
+
+For development (full checkout with experiment scripts):
+
+```bash
+git clone <repo-url> && cd pythongfm
+pip install -e ".[torch,dev]"
+```
+
+## Quick Start
+
+```python
+import pygfm
+
+print(pygfm.__version__)
+```
+
+## Package Structure
+
+```
+pygfm/
+├── baseline_models/   # 19 GFM baseline implementations
+├── public/            # Shared utilities, losses, backbone encoders
+│   ├── backbone_models/
+│   ├── utils/
+│   ├── cli/
+│   └── model_bases.py
+├── private/           # Internal modules (core encoders, data generation)
+└── cli/               # Console entrypoints
+```
+
+## Supported Baselines
+
+
+| Category            | Baselines                                                       |
+| ------------------- | --------------------------------------------------------------- |
+| Prompt-based GFM    | MDGPT, SAMGPT, MDGFM, GraphPrompt, HGPrompt, MultiGPrompt, GCoT |
+| Structure-aware     | SA2GFM, Bridge, GraphKeeper, GraphMore, Graver, BIM-GFM         |
+| LLM-integrated      | GraphGPT, GraphText, LLaGA, OneForAll                           |
+| Retrieval-augmented | RAG-GFM                                                         |
+| Classic             | Classic GNN                                                     |
+
+
+## Running Experiments
+
+Each baseline has its own experiment scripts under `scripts/<baseline>/`. Run from the repository root:
+
+```bash
+# Pre-training
+python scripts/mdgpt/pretrain.py
+
+# Downstream fine-tuning
+python scripts/sa2gfm/downstream.py
+
+# Full pipeline with config
+python scripts/gcot/pretrain.py
+python scripts/gcot/finetune.py
+python scripts/gcot/finetune_graph.py
+```
+
+## Console Commands
+
+After installation, the following CLI commands are available:
+
+
+| Command                 | Description                                 |
+| ----------------------- | ------------------------------------------- |
+| `gfm-sa2gfm-pretrain`   | SA2GFM contrastive pre-training (`-c` YAML) |
+| `gfm-sa2gfm-downstream` | SA2GFM MoE downstream fine-tuning           |
+
+
+## Baseline Documentation
+
+Detailed instructions for each baseline:
+
+
+| Baseline     | Docs                                                               |
+| ------------ | ------------------------------------------------------------------ |
+| MDGPT        | `[scripts/mdgpt/README.md](scripts/mdgpt/README.md)`               |
+| SA2GFM       | `[scripts/sa2gfm/README.md](scripts/sa2gfm/README.md)`             |
+| MultiGPrompt | `[scripts/multigprompt/README.md](scripts/multigprompt/README.md)` |
+| LLaGA        | `[scripts/llaga/README.md](scripts/llaga/README.md)`               |
+| GraphText    | `[scripts/graphtext/README.md](scripts/graphtext/README.md)`       |
+| GraphGPT     | `[scripts/graphgpt/README.md](scripts/graphgpt/README.md)`         |
+| OneForAll    | `[scripts/oneforall/README.md](scripts/oneforall/README.md)`       |
+| MDGFM        | `[scripts/mdgfm/README.md](scripts/mdgfm/README.md)`               |
+| SAMGPT       | `[scripts/samgpt/README.md](scripts/samgpt/README.md)`             |
+| GCoT         | `[scripts/gcot/README.md](scripts/gcot/README.md)`                 |
+| HGPrompt     | `[scripts/hgprompt/README.md](scripts/hgprompt/README.md)`         |
+| GraphPrompt  | `[scripts/graphprompt/README.md](scripts/graphprompt/README.md)`   |
+| Graver       | `[scripts/graver/README.md](scripts/graver/README.md)`             |
+| GraphMore    | `[scripts/graphmore/README.md](scripts/graphmore/README.md)`       |
+| Bridge       | `[scripts/bridge/README.md](scripts/bridge/README.md)`             |
+| GraphKeeper  | `[scripts/graphkeeper/README.md](scripts/graphkeeper/README.md)`   |
+| RAG-GFM      | `[scripts/rag_gfm/README.md](scripts/rag_gfm/README.md)`           |
+
+
+## Configuration
+
+Experiment configs are YAML files located at `scripts/<baseline>/configs/`. Pass them via `-c` flag or as positional arguments depending on the baseline.
+
+**Important:** Do **not** commit API keys. For baselines that require LLM API access (e.g., GraphText), copy the example config and fill in your keys locally:
+
+```bash
+cp scripts/graphtext/config/user/env.yaml.example scripts/graphtext/config/user/env.yaml
+```
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
+
+## Team
+
+**MAGIC GROUP** -- Beihang University, School of Computer Science and Engineering, ACT Lab.

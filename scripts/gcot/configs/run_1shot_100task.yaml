@@ -1,0 +1,6 @@
+# Batch 1-shot sweep — scripts/gcot/run_1shot_100task.py (reference)
+
+datasets: null
+task_num: 100
+ckpt_dir: ckpts/gcot
+downstream_root: downstream_data/gcot

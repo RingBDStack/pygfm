@@ -1,0 +1,29 @@
+# MDGPT PrePrompt 预训练 — 统一 YAML 入口（内置 runner，pip 安装即可，无需 scripts/）
+#
+#   pygfm -c /path/to/本文件.yaml
+#   或: python -m pygfm.cli.run_yaml -c ...
+#
+# 数据: 扁平目录 *.pt；data_root 可用环境变量 GFM_DATA_ROOT
+# 说明: 走 pygfm.cli.mdgpt_stages（target 可不在目录中时会 warning，与脚本版行为略有不同）
+
+baseline: mdgpt
+stage: pretrain
+
+# 顶层与 pretrain: 合并后传给内置 pretrain runner
+data_root: datasets/mdgpt
+seed: 42
+
+pretrain:
+  target: Cora
+  unify_dim: 50
+  hidden_dim: 256
+  num_layers: 3
+  num_neg: 50
+  lr: 1.0e-5
+  patience: 50
+  max_epochs: 200
+  log_interval: 50
+  prompt_mode: mul
+  temperature: 1.0
+  # 不设 save_dir / save_name：有 target 时脚本会写到 ckpts/mdgpt/{target}/preprompt_{target}.pth
+  no_swanlab: true

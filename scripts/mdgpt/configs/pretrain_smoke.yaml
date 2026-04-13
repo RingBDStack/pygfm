@@ -1,0 +1,23 @@
+# Tiny MDGPT pretrain for smoke / CI.
+# Usage: python scripts/mdgpt/pretrain.py -c scripts/mdgpt/configs/pretrain_smoke.yaml
+
+data_root: null
+save_dir: ckpts/mdgpt
+save_name: preprompt.pth
+seed: 42
+unify_dim: 50
+hidden_dim: 256
+num_layers: 3
+num_neg: 50
+num_domains: 4
+datasets: null
+target: Cora
+lr: 1.0e-5
+patience: 2
+max_epochs: 2
+prompt_mode: mul
+temperature: 1.0
+log_interval: 1
+no_swanlab: true
+swanlab_project: gfm-toolbox-mdgpt
+swanlab_run_name: null

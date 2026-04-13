@@ -1,0 +1,12 @@
+# Node-level few-shot splits — scripts/hgprompt/generate_downstream.py few_shot (reference; no -c)
+
+dataset: Cora
+data_root: datasets/hgprompt
+downstream_root: downstream_data/hgprompt
+output_dir: null
+data_path: null
+k_shot: 5
+n_splits: 100
+n_way: 0
+test_reserve: 1000
+seed: 42

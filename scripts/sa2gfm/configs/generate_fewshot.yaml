@@ -1,0 +1,11 @@
+# Few-shot split generation for SA²GFM downstream (writes under SA2GFM_DATA_ROOT/few_shot/...).
+# The wrapper scripts/sa2gfm/generate_fewshot.py does not forward -c; call the pipeline directly:
+#   python pygfm/baseline_models/sa2gfm/few_shot_gen/pipeline/01_generate_splits.py -c scripts/sa2gfm/configs/generate_fewshot.yaml
+
+dataset: cora
+k_shot: 1
+n_splits: 20
+n_way: 0
+test_reserve: 1000
+seed: 39
+write_example: false

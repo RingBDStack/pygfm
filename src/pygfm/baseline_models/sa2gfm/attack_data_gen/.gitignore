@@ -1,0 +1,6 @@
+outputs/
+checkpoints/*.pth
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store

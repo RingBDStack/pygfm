@@ -1,0 +1,19 @@
+# Few-shot split generation — scripts/mdgpt/generate_downstream.py
+# Usage: python scripts/mdgpt/generate_downstream.py -c scripts/mdgpt/configs/generate_downstream.yaml few_shot
+# mode (few_shot / graph_batch): first positional arg on CLI or mode field in this file.
+# Per-mode templates: scripts/mdgpt/configs/generate_few_shot.yaml, generate_graph_batch.yaml
+
+mode: few_shot
+dataset: Cora
+data_root: datasets/mdgpt
+downstream_root: downstream_data/mdgpt
+output_dir: null
+data_path: null
+k_shot: 5
+n_splits: 100
+n_way: 0
+test_reserve: 1000
+seed: 42
+max_one_hop: 10
+max_two_hop: 4
+n_jobs: 4

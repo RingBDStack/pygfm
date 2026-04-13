@@ -1,0 +1,5 @@
+# Few-shot split generation does not use -c in the thin wrapper; call the script with CLI flags, e.g.:
+#
+#   python scripts/sa2gfm/generate_fewshot.py --dataset cora --k-shot 1 --n-splits 20 --test-reserve 1000
+#
+# Underlying module: pygfm/baseline_models/sa2gfm/few_shot_gen/pipeline/01_generate_splits.py

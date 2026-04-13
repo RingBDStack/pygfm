@@ -1,0 +1,35 @@
+num_bases: 4
+emb_dim: 768
+num_layers: 6
+dropout: 0.0
+JK: "last"
+lr: 0.0001
+l2: 0
+num_epochs: 50
+batch_size: 128
+num_workers: 4
+seed: 1
+data_path:
+# Experiment logging: wandb | swanlab | none
+logger_backend: wandb
+# Wandb offline, or SwanLab local when logger_backend=swanlab (use False + swanlab_mode cloud for cloud SwanLab)
+offline_log: True
+# SwanLab (when logger_backend: swanlab). null = cloud unless offline_log forces local
+swanlab_project: ofa-test
+swanlab_workspace: null
+swanlab_mode: null
+swanlab_logdir: null
+swanlab_description: null
+exp_name: ""
+train_sample_size: -1
+eval_sample_size: -1
+rwpe:
+task_names:
+  - arxiv
+llm_name: "ST"
+llm_b_size: 1
+load_texts: False
+max_nodes_per_hop: 100
+load_best: False
+test_rep: 1
+val_interval: 1

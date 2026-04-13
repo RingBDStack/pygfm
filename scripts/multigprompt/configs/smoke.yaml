@@ -1,0 +1,11 @@
+# MultiGPrompt smoke run (small task count / epochs).
+# Run: python scripts/multigprompt/execute.py -c scripts/multigprompt/configs/smoke.yaml
+
+dataset: cora
+aug_type: edge
+drop_percent: 0.1
+seed: 39
+gpu: 0
+epochs: 2
+tasks: 2
+inner_steps: 2

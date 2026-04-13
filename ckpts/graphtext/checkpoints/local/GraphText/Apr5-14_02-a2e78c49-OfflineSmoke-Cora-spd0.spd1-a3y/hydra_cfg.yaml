@@ -1,0 +1,315 @@
+# @package _global_
+path:
+  data_cache: datasets/graphtext/data_cache/
+  data_storage: datasets/graphtext/data/
+  data_pt: datasets/graphtext/
+  hf_local: models/graphtext/hf_models/
+  temp: temp/
+seed: 2023
+eval_freq: 100
+slurm_id: null
+code_version: 14.2
+user: {}
+prompt_templates:
+  qa_instruction: ''
+  task_context: ''
+  human:
+    base: '{instruction}{demo}{question}'
+  instruction:
+    na: ''
+    sft: 'Your goal is to perform node classification. You are given the information
+      of each node in a xml format. Using the given information of a node, you need
+      to classify the node to several choices: . Remember, your answer should be in
+      the form of the class label.'
+    base: 'You are a helpful assistant that classifies the topic of an academic paper
+      based on the labels of the cited papers. You are going to choose the correct
+      answer from several choices of paper categories: \n'
+  demo:
+    na: ''
+    base: \nHere are a few examples:\n {demonstration}\n\n Now let's answer the question
+      below:\n
+  demo_qa:
+    base:
+      xml: '{graph_info}\n<question>What''s the topic of academic paper given the
+        information above?</question>\n<answer>{answer}</answer>'
+      json: '{graph_info}\n<question>What''s the topic of academic paper?</question>\n
+        <answer>{answer}</answer>'
+      flatten: '{graph_info}\n<question>What''s the topic of academic paper?</question>\n
+        <answer>{answer}</answer>'
+      random_flatten: '{graph_info}\n<question>What''s the topic of academic paper?</question>\n
+        <answer>{answer}</answer>'
+      xml_wo_text: '{graph_info}\n<question>What''s the topic of academic paper?</question>\n
+        <answer>{answer}</answer>'
+  question:
+    cla_fstring: "{instruction}{demonstration}\\n\n    Question: What's the topic\
+      \ of academic paper [{query_msg}]?\\n\n    Answer:"
+    label_prop_xml: '{information}\n <question>What''s the topic of academic paper?</question>\n
+      <answer>'
+    label_prop_xml_cot: '{information}\n <question>What''s the topic of academic paper?</question>\n
+      Generate your answer with <answer> </answer> around it. Let''s think step by
+      step and solve it with the message passing!'
+    label_prop_xml_demo: '{information}\n <question>What''s the topic of the target
+      academic paper with the neighborhood label information above?</question>\n <answer>{answer}</answer>'
+    icl: '{graph_info}\nWhat''s the topic of the paper given the information above?
+      Valid choices are .\nRemember, your answer should be in the form of the class
+      choice wrapped by <answer> </answer>.'
+    icl_general: '{graph_info}\nWhat''s the target class given the information above?
+      Valid choices are .\nRemember, your answer should be in the form of the class
+      choice wrapped by <answer> </answer>.'
+    icl_new: '{graph_info}\nWhat''s the topic of the paper given the information above?
+      Valid choices are .\nRemember, you have to give a choice as the answer, and
+      your answer should be in the form of the class choice wrapped by <answer> </answer>.'
+    icl_tag: '{graph_info}\nWhat''s the topic of the paper given the information above?
+      Valid choices are .\nRemember, your answer should be in the form of a capital
+      letter of choice index wrapped by <answer> </answer>, e.g., <answer>A</answer>,
+      <answer>B</answer>, etc.'
+    icl_zscot: '{graph_info}\nWhat''s the topic of the paper given the information
+      above? Valid choices are .\nLet''s think step by step first and then answer
+      the question. Remember, you have to give a choice as the answer, and your answer
+      should be in the form of the class choice wrapped by <answer> </answer>.'
+    sft: \n{graph_info}\n
+  gpt:
+    base: 'The answer is: {answer}.'
+data:
+  name: cora
+  type: torch_pt
+  max_train_samples: 9999999
+  max_eval_samples: 999999
+  max_test_samples: 999999
+  label_description: ''
+  n_shots: -1
+  text:
+    mode: label_name
+  label_text: name
+  feat_dim: 1433
+  task_description: 'You are a helpful assistant that classifies the topic of an academic
+    paper based on the labels of the cited papers. You are going to choose the correct
+    answer from several choices of paper categories: '
+llm:
+  name: OfflineSmoke
+  base_model: smoke
+  hf_name: ''
+  hidden_dim: 4096
+  offline_smoke: true
+  smoke_hidden_size: 256
+  smoke_num_hidden_layers: 2
+  smoke_intermediate_size: 512
+  smoke_num_attention_heads: 4
+max_length: 1024
+max_shard_size: 10GB
+max_len: 512
+penalty_alpha: 0.6
+top_k: 10
+top_p: 0.7
+random_prefix_len: 5
+sample_num: 2
+decoding_method: sampling
+generate_len: 512
+use_deepspeed: false
+tree_node_alias:
+  x: feature
+  'y': neighbor labels
+  a0x: center node feature
+  a1x: first-order smoothed feature
+  a2x: second-order smoothed feature
+  a3x: third-order smoothed feature
+  a1y: first-order pseudo labels
+  a2y: second-order pseudo labels
+  a3y: third-order pseudo labels
+  a4y: fourth-order pseudo labels
+  choice: neighbor labels
+  a0x_t: center node feature
+  a1x_t: first-order smoothed feature
+  a2x_t: second-order smoothed feature
+  a3x_t: third-order smoothed feature
+  a1y_t: first-order pseudo labels
+  a2y_t: second-order pseudo labels
+  a3y_t: third-order pseudo labels
+  a4y_t: fourth-order pseudo labels
+  a0x_sim: feature similarity graph
+  a1x_sim: first-order feature similarity graph
+  a2x_sim: second-order feature similarity graph
+  a3x_sim: third-order feature similarity graph
+  spd0: center node
+  spd1: first-hop neighbor
+  spd2: second-hop neighbor
+  spd3: third-hop neighbor
+subgraph_size: 5
+attr_mask:
+  title: CenterOnly
+  tape: CenterOnly
+  text: CenterOnly
+pg_size:
+  spd0: 1
+  spd1: 5
+  spd2: 5
+  spd3: 5
+  pprtopk: 5
+  a0x_sim: 5
+  a1x_sim: 5
+  a2x_sim: 5
+  a3x_sim: 5
+  a4x_sim: 5
+  ppr: 5
+in_field_description: null
+model:
+  name: GraphText
+text_info: a3y
+rel_info: spd0.spd1
+nb_padding: false
+nb_order: true
+node_dropout: 0.5
+tree_hierarchy: attr_type.graph_type
+out_field: c
+sim:
+  topk: 20
+  cache_template: datasets/graphtext/data_cache/cora/{pg_name}Top20.sim_proxy_graph
+spd:
+  max_hops: 3
+ppr:
+  max_hops: 2
+  default_alpha: 0.25
+  cache_template: datasets/graphtext/data_cache/cora/Top{topk}_eps{eps}_{normalization}norm_alpha={alpha}.ppr_matrix
+  topk: 32
+  eps: 0.0001
+  normalization: sym
+rank:
+  methods:
+  - ppr_0.25
+  top_k: 32
+  hidden_dim: 128
+use_demo: false
+demo:
+  select_method: max_degree
+  template: '{graph_tree_info}The answer is {label}.'
+  keep_label_description: false
+  n_separators: 2
+  n_samples: 7
+add_pre_instruction: true
+pre_instruction_template: short
+remove_quotation: true
+eval_sets:
+- train
+- val
+- test
+conv_template: no_conv
+human_prompt: base
+gpt_prompt: base
+instruct_prompt: sft
+demo_prompt: base
+demo_qa_prompt: base
+question_prompt: sft
+prompt:
+  style: xml
+  human:
+    template: '{instruction}{demo}{question}'
+    instruction: 'Your goal is to perform node classification. You are given the information
+      of each node in a xml format. Using the given information of a node, you need
+      to classify the node to several choices: . Remember, your answer should be in
+      the form of the class label.'
+  demo:
+    template: \nHere are a few examples:\n {demonstration}\n\n Now let's answer the
+      question below:\n
+  demo_qa:
+    template: '{graph_info}\n<question>What''s the topic of academic paper given the
+      information above?</question>\n<answer>{answer}</answer>'
+  question:
+    template: \n{graph_info}\n
+  gpt:
+    template: 'The answer is: {answer}.'
+mode: sft
+encoder:
+  dropout: 0.5
+  input_norm: true
+  output_norm: true
+  norm: LN
+  input_dropout: true
+  output_dropout: false
+  new_arg: true
+encoder_alias: 0.5do0.5
+log_freq: 500
+use_flash_attn: false
+dropout: 0.5
+eval_choice_only: true
+add_class_token: true
+add_label_name_output: true
+add_field_token: true
+add_info_token: true
+add_pad_token: true
+eval_metric: val_acc
+add_loop_inference: false
+use_fwd_eval: false
+metrics:
+- acc
+min_eval_step: 100
+choice_readout_pos: 0
+max_tgt_len: 2048
+max_gen_len: 5
+lora:
+  r: -1
+  alpha: -1
+  dropout: 0.1
+  target_modules:
+  - q_proj
+  - v_proj
+  - k_proj
+  - o_proj
+stage: 2
+save_freq: 30000
+max_epochs: 9999
+total_steps: 2
+frozen_encoder: false
+frozen_ori_llm_parameters: true
+agent_name: DeepSpeedAgent
+eq_batch_size: 4
+inf_batch_size: 12
+max_bsz_per_gpu: 8
+bsz_per_gpu: 4
+grad_acc_steps: 1
+use_fp16: true
+use_bf16: true
+optimizer_type: AdamW
+warmup_rate: 0.1
+lr: 5.0e-05
+ds:
+  train_batch_size: 4
+  train_micro_batch_size_per_gpu: 4
+  gradient_accumulation_steps: 1
+  steps_per_print: 2000
+  gradient_clipping: 1.0
+  zero_optimization:
+    stage: 2
+    offload_optimizer:
+      device: cpu
+    contiguous_gradients: true
+    allgather_bucket_size: 500000000
+    allgather_partitions: true
+  fp16:
+    enabled: true
+    opt_level: O2
+    min_loss_scale: 1
+  bf16:
+    enable: true
+  optimizer:
+    type: AdamW
+    params:
+      lr: 5.0e-05
+      betas:
+      - 0.9
+      - 0.95
+      eps: 1.0e-08
+      weight_decay: 0.001
+  scheduler:
+    type: WarmupDecayLR
+    params:
+      warmup_min_lr: 0
+      warmup_max_lr: 5.0e-05
+      warmup_num_steps: 0
+      total_num_steps: 2
+  activation_checkpointing:
+    partition_activations: true
+    cpu_checkpointing: true
+    contiguous_memory_optimization: false
+    number_checkpoints: null
+    synchronize_checkpoint_boundary: false
+    profile: false

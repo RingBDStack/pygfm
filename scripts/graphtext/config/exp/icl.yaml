@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - override /llm: llama_icl
+
+mode: icl
+data:
+  max_eval_samples: 999999
+node_dropout: 0 # NO NEED FOR DROPOUT NODE

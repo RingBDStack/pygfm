@@ -1,0 +1,20 @@
+# MDGFM node-level few-shot finetune — scripts/mdgfm/finetune.py
+# Usage: python scripts/mdgfm/finetune.py -c scripts/mdgfm/configs/finetune.yaml
+
+dataset: Cora
+k_shot: 1
+ckpt: null
+downstream_root: downstream_data/mdgfm
+splits_path: null
+split_id: 0
+task_num: 0
+data_root: datasets/mdgfm
+seed: 42
+lr: 0.001
+patience: 50
+max_steps: 400
+test_reserve: 1000
+beta: 1.0
+no_swanlab: false
+swanlab_project: gfm-toolbox-mdgfm
+swanlab_run_name: null

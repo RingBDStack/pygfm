@@ -1,0 +1,22 @@
+# BRIDGE node-level few-shot finetune — scripts/bridge/finetune.py
+# Usage: python scripts/bridge/finetune.py -c scripts/bridge/configs/finetune.yaml
+
+dataset: Cora
+k_shot: 1
+ckpt: null
+downstream_root: downstream_data/bridge
+splits_path: null
+split_id: 0
+task_num: 0
+data_root: datasets/bridge
+seed: 42
+max_epochs: 300
+lr_router: 0.001
+lr_proto: 0.01
+weight_ent: 0.1
+weight_spec: 0.01
+test_reserve: 1000
+spectral_k: 10
+row_norm: false
+no_swanlab: false
+swanlab_project: gfm-toolbox-bridge

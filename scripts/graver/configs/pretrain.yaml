@@ -1,0 +1,27 @@
+# GRAVER PrePrompt pretrain — scripts/graver/pretrain.py
+# Usage: python scripts/graver/pretrain.py -c scripts/graver/configs/pretrain.yaml
+
+data_root: null
+save_dir: ckpts/graver
+save_name: preprompt.pth
+seed: 39
+unify_dim: 64
+hidden_dim: 256
+num_neg: 50
+datasets: null
+target: null
+init_k: 2
+delta_k: 0
+routit: 1
+tau: 1.0
+dropout: 0.2
+num_layers: 1
+lr: 1.0e-5
+weight_decay: 0.0
+max_epochs: 10000
+patience: 50
+row_norm: false
+no_swanlab: false
+swanlab_project: gfm-toolbox-graver
+swanlab_run_name: null
+log_interval: 10

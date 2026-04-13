@@ -1,0 +1,27 @@
+# GraphMoRE graph-classification finetune — scripts/graphmore/finetune_graph.py (reference; no -c)
+
+dataset: MUTAG
+data_root: datasets/graphmore
+ckpt: null
+seed: 3047
+exp_iters: 10
+fold: 10
+init_curvs: [-3, -1, 0, 1, 3]
+hidden_features: 64
+embed_features: 32
+sample_hops: [2, 3]
+backbone: gcn
+hidden_cls: 32
+n_layers_cls: 2
+drop_edge_cls: 0.0
+drop_feat_cls: 0.0
+coef_dis: 0.0001
+batch_size: 32
+lr_riemann: 0.01
+lr_cls: 0.01
+weight_decay: 0.0005
+epochs: 200
+patience: 50
+log_interval: 20
+no_swanlab: false
+swanlab_project: gfm-toolbox-graphmore

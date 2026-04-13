@@ -1,0 +1,9 @@
+# Batch LP / NC driver — scripts/graphmore/run_experiments.py (reference; no -c)
+
+datasets: Cora,Citeseer
+backbones: gcn
+task: both
+exp_iters: 10
+data_root: datasets/graphmore
+embed_features: 32
+no_swanlab: false

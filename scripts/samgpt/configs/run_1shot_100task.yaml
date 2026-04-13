@@ -1,0 +1,9 @@
+# Batch 1-shot sweep — scripts/samgpt/run_1shot_100task.py (no -c; reference)
+
+datasets: null
+task_num: 100
+ckpt_dir: ckpts/samgpt
+downstream_root: downstream_data/samgpt
+no_swanlab: false
+node_only: false
+graph_only: false

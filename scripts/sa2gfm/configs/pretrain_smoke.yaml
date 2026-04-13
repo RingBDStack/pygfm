@@ -1,0 +1,20 @@
+# Tiny SA²GFM pretrain for CI / smoke (JointContrastiveModel).
+# Run: gfm-sa2gfm-pretrain -c scripts/sa2gfm/configs/pretrain_smoke.yaml
+#   or: python scripts/sa2gfm/pretrain.py -c scripts/sa2gfm/configs/pretrain_smoke.yaml
+
+dataset: cora
+seed: 39
+gpu: 0
+hid_units: 256
+out_channels: 64
+num_layers: 2
+dropout: 0.2
+lr: 1.0e-5
+l2_coef: 0.0
+nb_epochs: 1
+patience: 1
+eval_steps: 1
+neg_samples: 50
+kl_weight: 0.0
+output: ""
+no_swanlab: true

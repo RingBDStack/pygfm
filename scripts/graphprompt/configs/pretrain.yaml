@@ -1,0 +1,24 @@
+# GraphPrompt PrePrompt pretrain — scripts/graphprompt/pretrain.py
+# Usage: python scripts/graphprompt/pretrain.py -c scripts/graphprompt/configs/pretrain.yaml
+
+data_root: null
+save_dir: null
+datasets: null
+save_name: preprompt.pth
+seed: 42
+unify_dim: 50
+hidden_dim: 256
+num_layers: 3
+num_neg: 50
+num_domains: 4
+domains: null
+target: null
+lr: 1.0e-5
+patience: 50
+max_epochs: 10000
+prompt_mode: mul
+temperature: 1.0
+log_interval: 500
+no_swanlab: false
+swanlab_project: gfm-toolbox-graphprompt
+swanlab_run_name: null

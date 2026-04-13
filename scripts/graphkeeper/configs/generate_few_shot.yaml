@@ -1,0 +1,15 @@
+# Node-level few-shot splits — scripts/graphkeeper/generate_downstream.py few_shot (reference)
+
+dataset: Cora
+data_root: datasets/graphkeeper
+downstream_root: downstream_data/graphkeeper
+output_dir: null
+data_path: null
+k_shot: 1
+n_splits: 100
+n_way: 0
+test_reserve: 1000
+seed: 42
+max_one_hop: 10
+max_two_hop: 4
+n_jobs: 4

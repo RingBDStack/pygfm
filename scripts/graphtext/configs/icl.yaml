@@ -1,0 +1,6 @@
+# Override dataset etc. on the CLI, e.g.:
+#   python scripts/graphtext/run_with_config.py -c scripts/graphtext/configs/icl.yaml data=pubmed max_test_samples=200
+# Fake-LLM smoke: scripts/graphtext/configs/icl_smoke.yaml (llm=smoke_icl)
+entry: icl
+hydra_overrides:
+  - exp=icl

@@ -1,0 +1,37 @@
+# LLaGA full training template (flat YAML for ``yaml`` / train_mem argv).
+# Run: python scripts/llaga/run.py yaml -c scripts/llaga/configs/train_template.yaml
+# Or:  python -m pygfm.baseline_models.llaga.train.train_mem $(python -c "...")  # see run.py
+#
+# Point ``model_name_or_path`` to a local HF folder or Hub id; override with LLAGA_MODEL_BASE_OVERRIDE.
+model_name_or_path: facebook/opt-2.7b
+offline_smoke: false
+version: v1
+cache_dir: ckpts/llaga/hf_cache
+pretrained_embedding_type: simteg
+tune_mm_mlp_adapter: true
+mm_use_graph_start_end: false
+mm_use_graph_patch_token: false
+bf16: true
+output_dir: ckpts/llaga/checkpoints/cora_run
+num_train_epochs: 1
+per_device_train_batch_size: 4
+per_device_eval_batch_size: 4
+gradient_accumulation_steps: 1
+eval_strategy: no
+save_strategy: epoch
+learning_rate: 2e-3
+weight_decay: 0.0
+warmup_ratio: 0.03
+lr_scheduler_type: cosine
+logging_steps: 1
+tf32: true
+model_max_length: 1536
+gradient_checkpointing: true
+lazy_preprocess: true
+report_to: none
+use_hop: 2
+sample_neighbor_size: 10
+mm_projector_type: linear
+use_task: nc
+use_dataset: cora
+template: ND

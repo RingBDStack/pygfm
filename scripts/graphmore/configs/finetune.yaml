@@ -1,0 +1,30 @@
+# GraphMoRE node-classification finetune — scripts/graphmore/finetune.py
+# Usage: python scripts/graphmore/finetune.py -c scripts/graphmore/configs/finetune.yaml
+
+dataset: Cora
+data_root: datasets/graphmore
+ckpt: null
+seed: 3047
+exp_iters: 10
+init_curvs: [-3, -1, 0, 1, 3]
+hidden_features: 64
+embed_features: 32
+sample_hops: [2, 3]
+backbone: gcn
+hidden_cls: 32
+n_layers_cls: 2
+n_heads: 8
+drop_edge_cls: 0.0
+drop_feat_cls: 0.0
+coef_dis: 0.0001
+lr_riemann: 0.01
+lr_gating: 0.01
+lr_cls: 0.01
+weight_decay: 0.0005
+epochs: 5000
+patience: 100
+min_epoch: 200
+eval_freq: 1
+log_interval: 100
+no_swanlab: false
+swanlab_project: gfm-toolbox-graphmore

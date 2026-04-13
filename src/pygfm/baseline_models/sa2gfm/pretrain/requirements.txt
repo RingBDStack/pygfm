@@ -1,0 +1,6 @@
+torch>=1.12
+torch-geometric>=2.0
+numpy>=1.20
+scipy>=1.7
+tqdm>=4.60
+swanlab>=0.3

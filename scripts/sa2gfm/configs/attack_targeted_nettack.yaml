@@ -1,0 +1,7 @@
+# Targeted Nettack chain: surrogate → reports → assemble.
+# Run: python scripts/sa2gfm/attack_targeted_nettack.py -c scripts/sa2gfm/configs/attack_targeted_nettack.yaml
+
+dataset: cora
+p: 1
+skip_surrogate_train: false
+device: cuda

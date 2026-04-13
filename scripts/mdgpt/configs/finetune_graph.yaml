@@ -1,0 +1,21 @@
+# MDGPT graph-level few-shot finetune — scripts/mdgpt/finetune_graph.py
+# Usage: python scripts/mdgpt/finetune_graph.py -c scripts/mdgpt/configs/finetune_graph.yaml --ckpt ...
+
+dataset: Cora
+k_shot: 1
+ckpt: null
+downstream_root: downstream_data/mdgpt
+splits_path: null
+split_id: 0
+task_num: 0
+data_root: datasets/mdgpt
+seed: 42
+lr: 0.001
+patience: 50
+max_steps: 400
+test_reserve: 1000
+max_one_hop: 10
+max_two_hop: 4
+no_swanlab: false
+swanlab_project: gfm-toolbox-mdgpt
+swanlab_run_name: null

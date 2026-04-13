@@ -1,0 +1,701 @@
+{
+  "version": "1.0",
+  "truncation": null,
+  "padding": null,
+  "added_tokens": [
+    {
+      "id": 0,
+      "content": "<s>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 1,
+      "content": "<pad>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 2,
+      "content": "</s>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 3,
+      "content": "<unk>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 4,
+      "content": "<graph>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 5,
+      "content": "#",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 6,
+      "content": "\n",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 7,
+      "content": "Human",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 8,
+      "content": "Assistant",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 9,
+      "content": "USER",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    }
+  ],
+  "normalizer": null,
+  "pre_tokenizer": {
+    "type": "ByteLevel",
+    "add_prefix_space": false,
+    "trim_offsets": true,
+    "use_regex": true
+  },
+  "post_processor": {
+    "type": "TemplateProcessing",
+    "single": [
+      {
+        "Sequence": {
+          "id": "A",
+          "type_id": 0
+        }
+      }
+    ],
+    "pair": [
+      {
+        "Sequence": {
+          "id": "A",
+          "type_id": 0
+        }
+      },
+      {
+        "Sequence": {
+          "id": "B",
+          "type_id": 1
+        }
+      }
+    ],
+    "special_tokens": {}
+  },
+  "decoder": null,
+  "model": {
+    "type": "BPE",
+    "dropout": null,
+    "unk_token": "<unk>",
+    "continuing_subword_prefix": null,
+    "end_of_word_suffix": null,
+    "fuse_unk": false,
+    "byte_fallback": false,
+    "ignore_merges": false,
+    "vocab": {
+      "<s>": 0,
+      "<pad>": 1,
+      "</s>": 2,
+      "<unk>": 3,
+      "<graph>": 4,
+      "#": 5,
+      "\n": 6,
+      "Human": 7,
+      "Assistant": 8,
+      "USER": 9,
+      "-": 10,
+      ".": 11,
+      ":": 12,
+      "<": 13,
+      ">": 14,
+      "A": 15,
+      "B": 16,
+      "C": 17,
+      "E": 18,
+      "G": 19,
+      "H": 20,
+      "I": 21,
+      "L": 22,
+      "N": 23,
+      "R": 24,
+      "S": 25,
+      "T": 26,
+      "U": 27,
+      "_": 28,
+      "a": 29,
+      "c": 30,
+      "d": 31,
+      "e": 32,
+      "f": 33,
+      "g": 34,
+      "h": 35,
+      "i": 36,
+      "k": 37,
+      "l": 38,
+      "m": 39,
+      "n": 40,
+      "o": 41,
+      "p": 42,
+      "r": 43,
+      "s": 44,
+      "t": 45,
+      "u": 46,
+      "v": 47,
+      "w": 48,
+      "y": 49,
+      "Ċ": 50,
+      "Ġ": 51,
+      "##": 52,
+      "or": 53,
+      "en": 54,
+      "ra": 55,
+      "as": 56,
+      "he": 57,
+      "in": 58,
+      "ĠA": 59,
+      "an": 60,
+      "gra": 61,
+      "ph": 62,
+      "si": 63,
+      "wor": 64,
+      "###": 65,
+      "graph": 66,
+      "ed": 67,
+      "ent": 68,
+      "Le": 69,
+      "Ne": 70,
+      "ar": 71,
+      "nin": 72,
+      "ĠR": 73,
+      "Lear": 74,
+      "ning": 75,
+      "Learning": 76,
+      "AN": 77,
+      "ER": 78,
+      "IS": 79,
+      "SS": 80,
+      "SER": 81,
+      "TAN": 82,
+      "ld": 83,
+      "ll": 84,
+      "Ġhe": 85,
+      "Ġwor": 86,
+      "ĠASS": 87,
+      "ISTAN": 88,
+      "llo": 89,
+      "Ġhello": 90,
+      "Ġworld": 91,
+      "ĠASSISTAN": 92,
+      "ĠASSISTANT": 93,
+      "Gi": 94,
+      "Hu": 95,
+      "The": 96,
+      "cl": 97,
+      "cent": 98,
+      "de": 99,
+      "er": 100,
+      "fy": 101,
+      "man": 102,
+      "no": 103,
+      "st": 104,
+      "ssi": 105,
+      "ven": 106,
+      "Ġ<": 107,
+      "Ġa": 108,
+      "Ġgraph": 109,
+      "ĠGi": 110,
+      "ĠHu": 111,
+      "ĠThe": 112,
+      "Ġcl": 113,
+      "Ġno": 114,
+      "ory": 115,
+      "assi": 116,
+      "ĠAssi": 117,
+      "ant": 118,
+      "center": 119,
+      "stant": 120,
+      "ĠGiven": 121,
+      "ĠHuman": 122,
+      "ĠTheory": 123,
+      "Ġclassi": 124,
+      "Ġnode": 125,
+      "ĠAssistant": 126,
+      "centered": 127,
+      "Ġclassify": 128,
+      "Bas": 129,
+      "Cas": 130,
+      "ce": 131,
+      "ein": 132,
+      "for": 133,
+      "ks": 134,
+      "le": 135,
+      "ment": 136,
+      "twor": 137,
+      "ura": 138,
+      "ule": 139,
+      "ĠNe": 140,
+      "Networ": 141,
+      "ĠRein": 142,
+      "ĠRule": 143,
+      "Based": 144,
+      "Case": 145,
+      "cement": 146,
+      "forcement": 147,
+      "ural": 148,
+      "ĠNeural": 149,
+      "Networks": 150,
+      "ĠReinforcement": 151
+    },
+    "merges": [
+      [
+        "#",
+        "#"
+      ],
+      [
+        "o",
+        "r"
+      ],
+      [
+        "e",
+        "n"
+      ],
+      [
+        "r",
+        "a"
+      ],
+      [
+        "a",
+        "s"
+      ],
+      [
+        "h",
+        "e"
+      ],
+      [
+        "i",
+        "n"
+      ],
+      [
+        "Ġ",
+        "A"
+      ],
+      [
+        "a",
+        "n"
+      ],
+      [
+        "g",
+        "ra"
+      ],
+      [
+        "p",
+        "h"
+      ],
+      [
+        "s",
+        "i"
+      ],
+      [
+        "w",
+        "or"
+      ],
+      [
+        "##",
+        "#"
+      ],
+      [
+        "gra",
+        "ph"
+      ],
+      [
+        "e",
+        "d"
+      ],
+      [
+        "en",
+        "t"
+      ],
+      [
+        "L",
+        "e"
+      ],
+      [
+        "N",
+        "e"
+      ],
+      [
+        "a",
+        "r"
+      ],
+      [
+        "n",
+        "in"
+      ],
+      [
+        "Ġ",
+        "R"
+      ],
+      [
+        "Le",
+        "ar"
+      ],
+      [
+        "nin",
+        "g"
+      ],
+      [
+        "Lear",
+        "ning"
+      ],
+      [
+        "A",
+        "N"
+      ],
+      [
+        "E",
+        "R"
+      ],
+      [
+        "I",
+        "S"
+      ],
+      [
+        "S",
+        "S"
+      ],
+      [
+        "S",
+        "ER"
+      ],
+      [
+        "T",
+        "AN"
+      ],
+      [
+        "U",
+        "SER"
+      ],
+      [
+        "l",
+        "d"
+      ],
+      [
+        "l",
+        "l"
+      ],
+      [
+        "Ġ",
+        "he"
+      ],
+      [
+        "Ġ",
+        "wor"
+      ],
+      [
+        "ĠA",
+        "SS"
+      ],
+      [
+        "IS",
+        "TAN"
+      ],
+      [
+        "ll",
+        "o"
+      ],
+      [
+        "Ġhe",
+        "llo"
+      ],
+      [
+        "Ġwor",
+        "ld"
+      ],
+      [
+        "ĠASS",
+        "ISTAN"
+      ],
+      [
+        "ĠASSISTAN",
+        "T"
+      ],
+      [
+        "G",
+        "i"
+      ],
+      [
+        "H",
+        "u"
+      ],
+      [
+        "T",
+        "he"
+      ],
+      [
+        "c",
+        "l"
+      ],
+      [
+        "c",
+        "ent"
+      ],
+      [
+        "d",
+        "e"
+      ],
+      [
+        "e",
+        "r"
+      ],
+      [
+        "f",
+        "y"
+      ],
+      [
+        "m",
+        "an"
+      ],
+      [
+        "n",
+        "o"
+      ],
+      [
+        "s",
+        "t"
+      ],
+      [
+        "s",
+        "si"
+      ],
+      [
+        "v",
+        "en"
+      ],
+      [
+        "Ġ",
+        "<"
+      ],
+      [
+        "Ġ",
+        "a"
+      ],
+      [
+        "Ġ",
+        "graph"
+      ],
+      [
+        "Ġ",
+        "Gi"
+      ],
+      [
+        "Ġ",
+        "Hu"
+      ],
+      [
+        "Ġ",
+        "The"
+      ],
+      [
+        "Ġ",
+        "cl"
+      ],
+      [
+        "Ġ",
+        "no"
+      ],
+      [
+        "or",
+        "y"
+      ],
+      [
+        "as",
+        "si"
+      ],
+      [
+        "ĠA",
+        "ssi"
+      ],
+      [
+        "an",
+        "t"
+      ],
+      [
+        "cent",
+        "er"
+      ],
+      [
+        "st",
+        "ant"
+      ],
+      [
+        "ĠGi",
+        "ven"
+      ],
+      [
+        "ĠHu",
+        "man"
+      ],
+      [
+        "ĠThe",
+        "ory"
+      ],
+      [
+        "Ġcl",
+        "assi"
+      ],
+      [
+        "Ġno",
+        "de"
+      ],
+      [
+        "ĠAssi",
+        "stant"
+      ],
+      [
+        "center",
+        "ed"
+      ],
+      [
+        "Ġclassi",
+        "fy"
+      ],
+      [
+        "B",
+        "as"
+      ],
+      [
+        "C",
+        "as"
+      ],
+      [
+        "c",
+        "e"
+      ],
+      [
+        "e",
+        "in"
+      ],
+      [
+        "f",
+        "or"
+      ],
+      [
+        "k",
+        "s"
+      ],
+      [
+        "l",
+        "e"
+      ],
+      [
+        "m",
+        "ent"
+      ],
+      [
+        "t",
+        "wor"
+      ],
+      [
+        "u",
+        "ra"
+      ],
+      [
+        "u",
+        "le"
+      ],
+      [
+        "Ġ",
+        "Ne"
+      ],
+      [
+        "Ne",
+        "twor"
+      ],
+      [
+        "ĠR",
+        "ein"
+      ],
+      [
+        "ĠR",
+        "ule"
+      ],
+      [
+        "Bas",
+        "ed"
+      ],
+      [
+        "Cas",
+        "e"
+      ],
+      [
+        "ce",
+        "ment"
+      ],
+      [
+        "for",
+        "cement"
+      ],
+      [
+        "ura",
+        "l"
+      ],
+      [
+        "ĠNe",
+        "ural"
+      ],
+      [
+        "Networ",
+        "ks"
+      ],
+      [
+        "ĠRein",
+        "forcement"
+      ]
+    ]
+  }
+}

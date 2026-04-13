@@ -1,0 +1,8 @@
+# Offline / fake-LLM smoke: no Hugging Face download, no API. For real SFT use sft.yaml.
+#   python scripts/graphtext/run_with_config.py -c scripts/graphtext/configs/sft_smoke.yaml data=cora total_steps=2
+entry: sft
+hydra_overrides:
+  - exp=sft
+  - llm=offline_smoke
+  - use_deepspeed=false
+  - total_steps=2

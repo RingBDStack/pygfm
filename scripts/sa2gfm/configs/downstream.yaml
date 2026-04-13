@@ -1,0 +1,24 @@
+# SA²GFM MoE downstream node classification (few-shot splits under downstream_data/sa2gfm/...).
+# Run: gfm-sa2gfm-downstream -c scripts/sa2gfm/configs/downstream.yaml
+#   or: python scripts/sa2gfm/downstream.py
+dataset: cora
+seed: 39
+shot_num: 1
+num_splits: 20
+epochs: 200
+no_swanlab: false
+unify_dim: 64
+split_id: -1
+hidden_dim: 64
+num_heads: 4
+head_dim: 16
+gamma: 5.0
+tau: 0.0
+lambda_var: 1.0
+alpha: 0.5
+gcn_layers: 2
+dropout: 0.5
+out_channels: 64
+hid_units: 256
+lr: 0.001
+gpu: 0

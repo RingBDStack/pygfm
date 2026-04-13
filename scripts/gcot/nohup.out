@@ -1,0 +1,32 @@
+Successfully initialized: Pubmed
+Successfully initialized: Photo
+Successfully initialized: Cora
+Successfully initialized: Citeseer
+Pretrain domains: ['Pubmed', 'Photo', 'Citeseer']
+--- [DomainAlignment] PCA fitted with 50 components ---
+--- [DomainAlignment] PCA fitted with 50 components ---
+--- [DomainAlignment] PCA fitted with 50 components ---
+swanlab: Tracking run with swanlab version 0.7.11
+swanlab: Run data will be saved locally in 
+/home/zhangjs26/gfm_new/scripts/gcot/swanlog/run-20260318_112730-6pn88esjj54ffeh
+5xfm16
+swanlab: 👋 Hi ajionline,welcome to swanlab!
+swanlab: Syncing run pretrain_target_Cora to the cloud
+swanlab: 🏠 View project at https://swanlab.cn/@ajionline/gfm-toolbox-gcot
+swanlab: 🚀 View run at 
+https://swanlab.cn/@ajionline/gfm-toolbox-gcot/runs/6pn88esjj54ffeh5xfm16
+>> GCoT PrePrompt pretraining ...
+Epoch    0 | Loss: 3.4605
+Epoch  500 | Loss: 3.2363
+Epoch 1000 | Loss: 3.0272
+Epoch 1500 | Loss: 3.0162
+Epoch 2000 | Loss: 3.0111
+Epoch 2500 | Loss: 3.0075
+Early stopping.
+Saved: ckpts/gcot/cora/preprompt_cora.pth
+Saved aligners: ckpts/gcot/cora/aligners.pkl
+Pretrain done.
+swanlab: Experiment pretrain_target_Cora has completed
+swanlab: 🏠 View project at https://swanlab.cn/@ajionline/gfm-toolbox-gcot
+swanlab: 🚀 View run at 
+https://swanlab.cn/@ajionline/gfm-toolbox-gcot/runs/6pn88esjj54ffeh5xfm16

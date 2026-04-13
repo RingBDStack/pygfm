@@ -1,0 +1,12 @@
+# MultiGPrompt full training template — scripts/multigprompt/execute.py
+# Run: python scripts/multigprompt/execute.py -c scripts/multigprompt/configs/train_template.yaml
+# Schema: pygfm.public.cli.multigprompt_config.MultiGPromptRunConfig
+
+dataset: cora
+aug_type: edge
+drop_percent: 0.1
+seed: 39
+gpu: 0
+epochs: 1000
+tasks: 100
+inner_steps: 50

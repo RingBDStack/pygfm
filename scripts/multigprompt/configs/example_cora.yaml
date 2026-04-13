@@ -1,0 +1,13 @@
+# MultiGPrompt example (same keys as scripts/multigprompt/execute.py).
+# Run: python scripts/multigprompt/execute.py -c scripts/multigprompt/configs/example_cora.yaml
+# Override example: ... -c ... --epochs 500 --gpu 1
+
+dataset: cora
+aug_type: edge
+drop_percent: 0.1
+seed: 39
+gpu: 0
+# save_name: null   # default checkpoint: ckpts/multigprompt/checkpoints/cora.pkl
+epochs: 1000
+tasks: 100
+inner_steps: 50

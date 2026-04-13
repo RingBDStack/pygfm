@@ -1,0 +1,38 @@
+# Lightweight smoke: graph default ``datasets/llaga/Cora.pt``; ``offline_smoke`` uses bundled fake OPT (no HF download).
+# CLI equivalent: ``python scripts/llaga/run.py smoke --max-steps 1``
+# Full upstream layout still supported: ``dataset/cora/processed_data.pt`` + simteg + jsonl.
+# Export: python scripts/llaga/run.py yaml --export-run-yaml scripts/llaga/configs/_exported.yaml -c scripts/llaga/configs/smoke.yaml
+model_name_or_path: facebook/opt-2.7b
+offline_smoke: true
+version: v1
+cache_dir: ckpts/llaga/hf_cache
+pretrained_embedding_type: node_x
+node_feature_dim: 1433
+tune_mm_mlp_adapter: true
+mm_use_graph_start_end: false
+mm_use_graph_patch_token: false
+bf16: false
+output_dir: ckpts/llaga/checkpoints/yaml_smoke
+num_train_epochs: 1
+max_steps: 1
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 1
+eval_strategy: no
+save_strategy: "no"
+learning_rate: 2e-3
+weight_decay: 0.0
+warmup_ratio: 0.03
+lr_scheduler_type: cosine
+logging_steps: 1
+tf32: true
+model_max_length: 1536
+gradient_checkpointing: true
+lazy_preprocess: true
+report_to: none
+use_hop: 2
+sample_neighbor_size: 10
+mm_projector_type: linear
+use_task: nc
+use_dataset: cora
+template: ND

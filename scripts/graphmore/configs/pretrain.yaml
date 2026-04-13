@@ -1,0 +1,24 @@
+# GraphMoRE link-prediction PrePrompt pretrain — scripts/graphmore/pretrain.py
+# Usage: python scripts/graphmore/pretrain.py -c scripts/graphmore/configs/pretrain.yaml
+
+dataset: Cora
+data_root: datasets/graphmore
+save_dir: ckpts/graphmore
+seed: 3047
+init_curvs: [-3, -1, 0, 1, 3]
+hidden_features: 64
+embed_features: 32
+sample_hops: [2, 3]
+r: 2.0
+t: 1.0
+coef_dis: 0.1
+lr_riemann: 0.01
+lr_gating: 0.01
+weight_decay: 0.0005
+epochs: 5000
+patience: 100
+min_epoch: 200
+eval_freq: 1
+log_interval: 50
+no_swanlab: false
+swanlab_project: gfm-toolbox-graphmore

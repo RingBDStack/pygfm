@@ -1,0 +1,6 @@
+# Batch 1-shot sweep — scripts/graphprompt/run_1shot_100task.py (reference)
+
+datasets: null
+task_num: 100
+ckpt_dir: ckpts/graphprompt
+downstream_root: downstream_data/graphprompt

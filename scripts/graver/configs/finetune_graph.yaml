@@ -1,0 +1,22 @@
+# GRAVER graph-level few-shot finetune — scripts/graver/finetune_graph.py (reference; no -c)
+
+dataset: Cora
+k_shot: 1
+ckpt: null
+downstream_root: downstream_data/graver
+splits_path: null
+split_id: 0
+task_num: 0
+data_root: datasets/graver
+seed: 39
+max_epochs: 50
+lr: 0.001
+lambda_entropy: 0.2
+test_reserve: 1000
+gen_num_nodes: 10
+combine_type: mul
+graphon_resolution: 10
+max_one_hop: 10
+max_two_hop: 4
+no_swanlab: false
+swanlab_project: gfm-toolbox-graver

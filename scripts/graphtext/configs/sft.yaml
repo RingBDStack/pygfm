@@ -1,0 +1,7 @@
+# Override dataset etc. on the CLI, e.g.:
+#   python scripts/graphtext/run_with_config.py -c scripts/graphtext/configs/sft.yaml data=cora total_steps=700
+# Offline fake-model smoke: scripts/graphtext/configs/sft_smoke.yaml (llm=offline_smoke)
+entry: sft
+hydra_overrides:
+  - exp=sft
+  - total_steps=700

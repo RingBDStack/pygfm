@@ -1,0 +1,25 @@
+# Tiny SA²GFM MoE downstream for smoke tests.
+# Run: gfm-sa2gfm-downstream -c scripts/sa2gfm/configs/downstream_smoke.yaml
+#   or: python scripts/sa2gfm/downstream.py -c scripts/sa2gfm/configs/downstream_smoke.yaml
+
+dataset: cora
+seed: 39
+shot_num: 1
+num_splits: 1
+epochs: 1
+no_swanlab: true
+unify_dim: 64
+split_id: -1
+hidden_dim: 64
+num_heads: 4
+head_dim: 16
+gamma: 5.0
+tau: 0.0
+lambda_var: 1.0
+alpha: 0.5
+gcn_layers: 2
+dropout: 0.5
+out_channels: 64
+hid_units: 256
+lr: 0.001
+gpu: 0

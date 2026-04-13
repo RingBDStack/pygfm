@@ -1,0 +1,19 @@
+# GraphPrompt node-level few-shot finetune — scripts/graphprompt/finetune.py
+# Usage: python scripts/graphprompt/finetune.py -c scripts/graphprompt/configs/finetune.yaml
+
+dataset: BZR
+k_shot: 1
+ckpt: null
+downstream_root: downstream_data/graphprompt
+splits_path: null
+split_id: 0
+task_num: 0
+data_root: datasets/graphprompt
+seed: 42
+lr: 0.001
+patience: 50
+max_steps: 400
+test_reserve: 1000
+no_swanlab: false
+swanlab_project: gfm-toolbox-graphprompt
+swanlab_run_name: null

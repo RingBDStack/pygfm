@@ -1,0 +1,5 @@
+torch>=1.12
+torch-geometric>=2.0
+torch-scatter>=2.0
+numpy>=1.20
+swanlab>=0.3

@@ -1,0 +1,5 @@
+# Metattack chain: surrogate (05) → batch (06). Extra deps: pip install -e ".[sa2gfm-attack]"
+# Run: python scripts/sa2gfm/attack_metattack.py -c scripts/sa2gfm/configs/attack_metattack.yaml
+
+dataset: cora
+device: null

@@ -1,0 +1,16 @@
+# @package _global_
+# Smoke/offline only: tiny random Llama + local tokenizer (``llm/smoke_llm.py``). Do not use for default training.
+# Disable DeepSpeed to avoid ``deepspeed.init_distributed`` errors without mpi4py on a single machine.
+defaults:
+  - llama_peft
+
+use_deepspeed: false
+
+llm:
+  base_model: smoke
+  name: OfflineSmoke
+  offline_smoke: true
+  smoke_hidden_size: 256
+  smoke_num_hidden_layers: 2
+  smoke_intermediate_size: 512
+  smoke_num_attention_heads: 4

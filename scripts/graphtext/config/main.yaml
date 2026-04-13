@@ -1,0 +1,60 @@
+# @package _global_
+# ! Primary hydra config for ALL models
+defaults:
+  - _self_ # To be overwritten by experimental settings
+  - optional user: env # (optional environment settings to add
+  - data: cora
+  - llm: deepseek
+  - model: graph_text
+  - optional template: ${model}/${data}
+  - prompt: prompts
+  - exp: icl
+  - override /hydra/hydra_logging@_group_: none # Disable Hydra logging
+  - override /hydra/job_logging@_group_: none # Disable Hydra logging
+
+debug: false
+
+# ! Path
+# @ Note that path end with /, file end without /
+path:
+  data_cache: datasets/graphtext/data_cache/
+  data_storage: datasets/graphtext/data/
+  # PyG-style ``Cora.pt`` / ``Pubmed.pt`` live here (torch_pt loader), same convention as other baselines.
+  data_pt: datasets/graphtext/
+  hf_local: models/graphtext/hf_models/  # HuggingFace model cache (Llama-2-7b etc.), override if needed
+  temp: temp/ # Removable
+  out_dir: ckpts/graphtext/checkpoints/
+
+env:
+  vars:
+    # Do not commit real API keys. Use environment variables or a private ``user/env.yaml`` (gitignored).
+    openai_api_key: "PUT_OPENAI_API_KEY_HERE"
+    deepseek_api_key: "PUT_DEEPSEEK_API_KEY_HERE"
+
+working_dir: ${path.temp}working_dir/${.uid}/ # For deletable temporary files.
+out_dir: ${path.out_dir}local/${model.name}/${.uid}-${.alias}/ # For files to be saved, to be initialized
+uid: null # To be generated in the main program
+seed: 2023
+#
+eval_freq: 50
+alias: ${llm.name}-${data.alias}-${data.n_shots}Shot-Text=${text_info}-Rel=${rel_info}
+
+slurm_id: ${oc.env:SLURM_JOB_ID,null}
+logging:
+  level: info
+  log_metric_to_stdout: False
+code_version: 14.2
+
+# @ ??
+hydra:
+  run:
+    dir: ../temp/hydra/${now:%Y.%m.%d}/${now:%H.%M.%S}
+
+# ! _file_ related
+_unimportant_cfg:
+  fields: [ gpus, debug, proj, env, uid,
+            local_rank, cmd, label_name, logging,
+            n_nodes, n_labels, alias
+  ]
+  postfix: [ _path, _file, _dir, _url ]
+  prefix: [ _ ]

@@ -1,0 +1,6 @@
+# Batch 1-shot × 100 tasks — scripts/bridge/run_1shot_100task.py (reference)
+
+datasets: null
+task_num: 100
+ckpt_dir: ckpts/bridge
+downstream_root: downstream_data/bridge

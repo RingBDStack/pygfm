@@ -1,0 +1,15 @@
+# OneForAll: merged on top of pygfm/baseline_models/oneforall/configs/default_config.yaml
+# Run: python scripts/oneforall/run.py -c scripts/oneforall/configs/run_template.yaml
+# Export merged: python scripts/oneforall/run.py --export-run-yaml scripts/oneforall/configs/_merged.yaml -c scripts/oneforall/configs/run_template.yaml
+#
+# Optional trailing CLI:  key value key value ...  (merge_mod)
+num_epochs: 50
+batch_size: 128
+logger_backend: wandb
+offline_log: true
+data_path: null
+task_names:
+  - arxiv
+llm_name: ST
+llm_b_size: 1
+load_texts: false

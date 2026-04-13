@@ -1,0 +1,5 @@
+# @package _global_
+# Offline ICL smoke: no HF/API calls; see ``llm/fake_llm.py``.
+llm:
+  _target_: llm.fake_llm.CpuFakeDebugraph_text
+  name: SmokeICL

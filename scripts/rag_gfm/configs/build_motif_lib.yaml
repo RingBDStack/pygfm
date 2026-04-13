@@ -1,0 +1,14 @@
+# Optional motif library — scripts/rag_gfm/build_motif_lib.py (no -c; reference)
+
+data_root: datasets/rag_gfm
+motif_lib_path: downstream_data/rag_gfm/motif_lib
+datasets: Cora,Citeseer,Pubmed
+top_k: 200
+epochs: 200
+batch_size: 64
+lr: 0.0001
+hidden_dim: 64
+output_dim: 32
+device: cuda
+seed: 42
+no_cse_cache: false

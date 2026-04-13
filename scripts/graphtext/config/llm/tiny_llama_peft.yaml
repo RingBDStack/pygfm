@@ -1,0 +1,8 @@
+# @package _global_
+# Small real HF weights (tiny-random-Llama); needs Hub access or local cache.
+defaults:
+  - llama_peft
+
+llm:
+  base_model: tinygpt
+  name: LLaMA-PEFT-tiny

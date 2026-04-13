@@ -1,0 +1,5 @@
+[console_scripts]
+gfm = pygfm.cli.run_yaml:main
+gfm-sa2gfm-downstream = pygfm.cli.sa2gfm:downstream_main
+gfm-sa2gfm-pretrain = pygfm.cli.sa2gfm:pretrain_main
+pygfm = pygfm.cli.run_yaml:main

@@ -1,0 +1,14 @@
+# Batch 1-shot 100-task — scripts/mdgpt/run_1shot_100task.py
+# Usage: python scripts/mdgpt/run_1shot_100task.py -c scripts/mdgpt/configs/run_1shot_100task.yaml
+
+datasets: null
+task_num: 100
+ckpt_dir: ckpts/mdgpt
+downstream_root: downstream_data/mdgpt
+no_swanlab: false
+node_only: false
+graph_only: false
+# If set, passed to child finetune.py / finetune_graph.py (child CLI can still override).
+# Optional YAML paths for children, relative to repo root.
+finetune_config: null
+finetune_graph_config: null

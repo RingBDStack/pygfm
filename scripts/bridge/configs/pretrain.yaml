@@ -1,0 +1,25 @@
+# BRIDGE PrePrompt pretrain — scripts/bridge/pretrain.py
+# Usage: python scripts/bridge/pretrain.py -c scripts/bridge/configs/pretrain.yaml
+
+data_root: null
+save_dir: null
+datasets: null
+save_name: preprompt.pth
+seed: 42
+unify_dim: 50
+hidden_dim: 256
+num_neg: 50
+num_domains: 4
+domains: null
+target: null
+lr: 1.0e-5
+max_epochs: 10001
+grad_clip: 1.0
+variance_weight: 0.01
+n_variance_samples: 2
+dropout: 0.0
+row_norm: false
+no_swanlab: false
+swanlab_project: gfm-toolbox-bridge
+swanlab_run_name: null
+log_interval: 10

@@ -1,0 +1,22 @@
+# RAG-GFM PrePrompt pretrain — scripts/rag_gfm/pretrain.py
+# Driver does not merge -c yet; use as a flag reference (or export merged YAML via a small wrapper).
+
+data_root: datasets/rag_gfm
+save_dir: ckpts/rag_gfm
+save_name: preprompt.pth
+target_dataset: null
+datasets: null
+seed: 42
+unify_dim: 50
+hidden_dim: 256
+num_layers: 3
+num_neg: 50
+lr: 1.0e-5
+patience: 50
+max_epochs: 10000
+prompt_mode: mul
+temperature: 1.0
+log_interval: 500
+no_swanlab: false
+swanlab_project: gfmtoolbox_raggfm
+swanlab_run_name: null

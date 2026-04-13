@@ -1,0 +1,6 @@
+# Batch 1-shot sweep — scripts/graver/run_1shot_100task.py (reference)
+
+datasets: null
+task_num: 100
+ckpt_dir: ckpts/graver
+downstream_root: downstream_data/graver

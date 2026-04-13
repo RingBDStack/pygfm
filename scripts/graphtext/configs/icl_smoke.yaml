@@ -1,0 +1,7 @@
+# ICL smoke with fake LLM (``llm/fake_llm.py``). For real ICL use icl.yaml (local Llama, etc.).
+#   python scripts/graphtext/run_with_config.py -c scripts/graphtext/configs/icl_smoke.yaml data=cora max_test_samples=20
+entry: icl
+hydra_overrides:
+  - exp=icl
+  - llm=smoke_icl
+  - data.max_test_samples=20

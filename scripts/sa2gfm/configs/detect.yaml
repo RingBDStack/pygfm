@@ -1,0 +1,7 @@
+# Community detection (writes communities/*.pt under SA2GFM_DATA_ROOT).
+# Run: python pygfm/baseline_models/sa2gfm/community_detection/pipeline/01_detect_communities.py -c scripts/sa2gfm/configs/detect.yaml
+
+dataset: cora
+method: louvain
+seed: 42
+resolution: 1.0

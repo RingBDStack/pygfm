@@ -1,0 +1,25 @@
+# GraphKeeper incremental PrePrompt pretrain — scripts/graphkeeper/pretrain.py
+# Usage: python scripts/graphkeeper/pretrain.py -c scripts/graphkeeper/configs/pretrain.yaml
+
+data_root: null
+save_dir: null
+datasets: null
+save_name: preprompt.pth
+seed: 42
+unify_dim: 50
+hidden_dim: 256
+num_layers: 3
+num_domains: 4
+dataset: null
+domains: null
+target: null
+lr: 1.0e-5
+patience: 200
+max_epochs: 10000
+prompt_mode: mul
+temperature: 1.0
+contrastive_weight: 0.0
+lp_max_edges: 8192
+log_interval: 200
+no_swanlab: false
+swanlab_project: gfm-toolbox-graphkeeper

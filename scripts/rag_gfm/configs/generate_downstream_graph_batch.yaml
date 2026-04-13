@@ -1,0 +1,17 @@
+# Graph-batch few-shot splits for RAG-GFM (via MDGPT generator + RAG paths).
+# Run:
+#   python scripts/mdgpt/generate_downstream.py graph_batch --dataset Cora --k_shot 1 \
+#     --downstream_root downstream_data/rag_gfm --data_root datasets/rag_gfm
+
+mode: graph_batch
+dataset: Cora
+data_root: datasets/rag_gfm
+downstream_root: downstream_data/rag_gfm
+k_shot: 1
+n_splits: 100
+n_way: 0
+test_reserve: 1000
+seed: 42
+max_one_hop: 10
+max_two_hop: 4
+n_jobs: 4

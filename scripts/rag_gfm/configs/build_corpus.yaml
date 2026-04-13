@@ -1,0 +1,8 @@
+# RAG text corpus (nano-vectordb) — scripts/rag_gfm/build_corpus.py
+# Driver has no -c; use this file as defaults reference or pass equivalent CLI flags.
+
+data_root: datasets/rag_gfm
+corpus_output: downstream_data/rag_gfm/corpus/unified_database.json
+datasets: Cora,Citeseer,Pubmed,Photo,Computers
+text_encoder: SentenceBert
+device: cuda

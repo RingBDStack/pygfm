@@ -1,0 +1,13 @@
+# Graph-level few-shot splits — scripts/graphprompt/generate_downstream.py (reference)
+
+dataset: BZR
+data_root: datasets/graphprompt
+downstream_root: downstream_data/graphprompt
+k_shot: 1
+n_splits: 100
+n_way: 0
+test_reserve: 1000
+seed: 42
+max_one_hop: 10
+max_two_hop: 4
+n_jobs: 4

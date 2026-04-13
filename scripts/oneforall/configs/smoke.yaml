@@ -1,0 +1,12 @@
+# Merged with default_config.yaml. Smoke: small task + small sampling (first run may auto-download Cora).
+# Offline or no sentence-encoder weights: use smoke_stub.yaml.
+# Test merge: python scripts/oneforall/run.py --export-run-yaml scripts/oneforall/configs/_merged.yaml -c scripts/oneforall/configs/smoke.yaml
+task_names:
+  - cora_node
+train_sample_size: 256
+eval_sample_size: 128
+num_workers: 0
+num_epochs: 1
+batch_size: 8
+logger_backend: none
+offline_log: true

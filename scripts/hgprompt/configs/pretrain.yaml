@@ -1,0 +1,23 @@
+# HGPrompt PrePrompt pretrain — scripts/hgprompt/pretrain.py
+# Usage: python scripts/hgprompt/pretrain.py -c scripts/hgprompt/configs/pretrain.yaml
+
+data_root: null
+save_dir: ckpts/hgprompt
+save_name: preprompt.pth
+seed: 42
+unify_dim: 50
+hidden_dim: 256
+num_layers: 3
+num_edge_types: 1
+num_neg: 50
+num_domains: 4
+datasets: null
+target: null
+lr: 1.0e-5
+patience: 50
+max_epochs: 10000
+temperature: 1.0
+log_interval: 500
+no_swanlab: false
+swanlab_project: gfm-toolbox-hgprompt
+swanlab_run_name: null

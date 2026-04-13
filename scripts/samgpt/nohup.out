@@ -1,0 +1,41 @@
+Successfully initialized: Pubmed
+Successfully initialized: Computers
+Skipping unknown directory: Reddit
+Successfully initialized: Photo
+Successfully initialized: Cora
+Successfully initialized: Citeseer
+Pretrain domains: ['Pubmed', 'Computers', 'Photo', 'Citeseer']
+--- [DomainAlignment] PCA fitted with 48 components ---
+--- [DomainAlignment] PCA fitted with 48 components ---
+--- [DomainAlignment] PCA fitted with 48 components ---
+--- [DomainAlignment] PCA fitted with 48 components ---
+swanlab: Tracking run with swanlab version 0.7.11
+swanlab: Run data will be saved locally in 
+/home/zhangjs26/gfm_new/scripts/samgpt/swanlog/run-20260318_112945-u0wjv91odewhm
+yqsmjlti
+swanlab: 👋 Hi ajionline,welcome to swanlab!
+swanlab: Syncing run pretrain_target_Cora to the cloud
+swanlab: 🏠 View project at https://swanlab.cn/@ajionline/gfm-toolbox-samgpt
+swanlab: 🚀 View run at 
+https://swanlab.cn/@ajionline/gfm-toolbox-samgpt/runs/u0wjv91odewhmyqsmjlti
+>> SAMGPT PrePrompt pretraining ...
+Epoch    0 | Loss: 3.3483
+Epoch  500 | Loss: 3.1633
+Epoch 1000 | Loss: 3.0574
+Epoch 1500 | Loss: 3.0264
+Epoch 2000 | Loss: 3.0180
+Epoch 2500 | Loss: 3.0129
+Epoch 3000 | Loss: 3.0093
+Epoch 3500 | Loss: 3.0064
+Epoch 4000 | Loss: 3.0041
+Epoch 4500 | Loss: 3.0019
+Epoch 5000 | Loss: 3.0004
+Epoch 5500 | Loss: 2.9988
+Early stopping.
+Saved: ckpts/samgpt/cora/preprompt_cora.pth
+Saved aligners: ckpts/samgpt/cora/aligners.pkl
+Pretrain done.
+swanlab: Experiment pretrain_target_Cora has completed
+swanlab: 🏠 View project at https://swanlab.cn/@ajionline/gfm-toolbox-samgpt
+swanlab: 🚀 View run at 
+https://swanlab.cn/@ajionline/gfm-toolbox-samgpt/runs/u0wjv91odewhmyqsmjlti

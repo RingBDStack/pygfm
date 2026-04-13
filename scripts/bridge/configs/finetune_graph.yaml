@@ -1,0 +1,22 @@
+# BRIDGE graph-level few-shot finetune — scripts/bridge/finetune_graph.py (reference; no -c)
+
+dataset: Cora
+k_shot: 1
+ckpt: null
+downstream_root: downstream_data/bridge
+splits_path: null
+split_id: 0
+task_num: 0
+data_root: datasets/bridge
+seed: 42
+max_epochs: 400
+lr_router: 0.001
+lr_proto: 0.01
+weight_ent: 0.1
+weight_spec: 0.01
+test_reserve: 1000
+spectral_k: 10
+max_one_hop: 10
+max_two_hop: 4
+no_swanlab: false
+swanlab_project: gfm-toolbox-bridge
