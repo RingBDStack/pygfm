@@ -1,8 +1,5 @@
 <div align="center">
-
-# pygfm
-
-**A Unified Python Toolkit for Graph Foundation Model Research**
+<img src="./assets/LOGO.png" style="width:30%; display:block; margin:0 auto;" alt="LOGO">
 
 [![PyPI version](https://img.shields.io/pypi/v/python-gfm?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/python-gfm/)
 [![Python](https://img.shields.io/pypi/pyversions/python-gfm?logo=python&logoColor=white)](https://pypi.org/project/python-gfm/)
