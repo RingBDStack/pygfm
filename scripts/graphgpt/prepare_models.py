@@ -18,7 +18,9 @@ import os
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+from pygfm.public.repo_paths import driver_script_repo_root
+
+ROOT = driver_script_repo_root(__file__) / "scripts"
 os.chdir(ROOT)
 
 

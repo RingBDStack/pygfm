@@ -436,7 +436,7 @@ class GraphText(nn.Module):
                                                                  node_id_to_encode_id)
                 for field, text_pos, encdoe_ids in continuous_fields:
                     # lookup batch encoded node embeddings
-                    g_emb = graph_emb[field][encdoe_ids]
+                    g_emb = graph_emb[field][encdoe_ids].to(dtype=cur_input_embeds.dtype)
                     cur_input_embeds[text_pos] = g_emb
                 new_input_embeds.append(cur_input_embeds)
             inputs_embeds = th.stack(new_input_embeds, dim=0)

@@ -17,8 +17,9 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = driver_script_repo_root(__file__)
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -31,13 +32,68 @@ from pygfm.private.utlis.downstream_data_gen import build_test_subgraphs
 from pygfm.baseline_models.rag_gfm import PrePromptModel
 from pygfm.baseline_models.mdgpt import DownPromptGraphModel
 from pygfm.public.utils import set_seed
+from pygfm.public.cli.yaml_config import parse_args_with_optional_yaml
+
+
+def _apply_yaml_ckpt_aliases(args: argparse.Namespace) -> None:
+    if getattr(args, "ckpt", None) and str(args.ckpt).strip():
+        return
+    try:
+        import yaml
+    except ImportError:
+        return
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("-c", "--config", default=None)
+    known, _ = pre.parse_known_args(sys.argv[1:])
+    if not known.config:
+        return
+    path = Path(known.config).expanduser().resolve()
+    if not path.is_file():
+        return
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        return
+    for key in ("checkpoint", "preprompt_ckpt", "preprompt_path"):
+        v = raw.get(key)
+        if v is not None and str(v).strip():
+            args.ckpt = str(v).strip()
+            return
+
+
+def _rag_gfm_default_preprompt_ckpt(dataset: str) -> Path:
+    sub = str(dataset).strip().lower()
+    return (ROOT / "ckpts" / "rag_gfm" / sub / f"preprompt_{sub}.pth").resolve()
+
+
+def _resolve_rag_gfm_ckpt(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    raw = getattr(args, "ckpt", None)
+    if raw is not None and str(raw).strip():
+        ck = str(raw).strip()
+    else:
+        cand = _rag_gfm_default_preprompt_ckpt(args.dataset)
+        if cand.is_file():
+            ck = str(cand)
+            print(f"[rag_gfm/finetune_graph] Using default PrePrompt ckpt: {ck}")
+        else:
+            parser.error(
+                "Missing --ckpt (or YAML ``ckpt``). Tried default: "
+                f"{cand} (not found). Run pretrain for this target or set ``ckpt``."
+            )
+    if not os.path.isabs(ck):
+        ck = str((ROOT / ck).resolve())
+    args.ckpt = ck
 
 
 def _parse_args():
     p = argparse.ArgumentParser(description="RAG-GFM DownPrompt few-shot graph classification finetuning")
     p.add_argument("--dataset", type=str, default="Cora", help="Target dataset")
     p.add_argument("--k_shot", type=int, default=1, choices=[1, 5], help="k-shot")
-    p.add_argument("--ckpt", type=str, required=True, help="RAG-GFM PrePrompt checkpoint path")
+    p.add_argument(
+        "--ckpt",
+        type=str,
+        default=None,
+        help="RAG-GFM PrePrompt checkpoint. Default: ckpts/rag_gfm/<dataset>/preprompt_<dataset>.pth",
+    )
     p.add_argument("--downstream_root", type=str, default="downstream_data/rag_gfm", help="Few-shot data root")
     p.add_argument("--splits_path", type=str, default=None, help="Explicit path to splits.pt")
     p.add_argument("--split_id", type=int, default=0)
@@ -53,7 +109,10 @@ def _parse_args():
     p.add_argument("--no_swanlab", action="store_true", help="Disable SwanLab logging")
     p.add_argument("--swanlab_project", type=str, default="gfmtoolbox_raggfm", help="SwanLab project name")
     p.add_argument("--swanlab_run_name", type=str, default=None, help="SwanLab run name (auto if omitted)")
-    return p.parse_args()
+    args = parse_args_with_optional_yaml(p)
+    _apply_yaml_ckpt_aliases(args)
+    _resolve_rag_gfm_ckpt(args, p)
+    return args
 
 
 def _load_graph(data_root: str, dataset: str):

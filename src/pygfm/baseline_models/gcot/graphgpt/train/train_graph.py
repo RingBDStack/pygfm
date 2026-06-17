@@ -812,7 +812,20 @@ def train():
         # Prefer ckpts/graphgpt/checkpoints/<tower>/ if <tower> is a name like "clip_gt_arxiv".
         _ckpt_root = pathlib.Path("ckpts") / "graphgpt" / "checkpoints"
         _enc = _ckpt_root / _tower
+        _clip_enc_names = (
+            "clip_gt_arxiv",
+            "clip_gt",
+            "clip_gcn_arxiv",
+            "clip_gt_arxiv_pub",
+        )
         if _enc.is_dir():
+            if _tower in _clip_enc_names and not (_enc / "config.json").is_file():
+                raise FileNotFoundError(
+                    f"GraphGPT graph encoder incomplete: {_enc.resolve()} "
+                    "is a directory but config.json is missing (expected GraphCLIP-GT: config.json + *.pkl). "
+                    "Add the real checkpoint files, delete this empty folder, or set graph_tower: MPNN "
+                    "for smoke runs without encoder weights."
+                )
             model.config.pretrain_graph_model_path = str(_enc.resolve()) + os.sep
         elif pathlib.Path(_tower).is_dir():
             # If user passes an explicit path to the encoder directory.

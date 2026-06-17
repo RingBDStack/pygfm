@@ -10,13 +10,13 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
-from _setup_repo import setup_repo
+from _setup_repo import sa2gfm_baseline_models_root, setup_repo
 
-REPO = setup_repo()
+setup_repo()
 
 
 def _main():
-    path = REPO / "pygfm/baseline_models/sa2gfm/few_shot_gen/pipeline/01_generate_splits.py"
+    path = sa2gfm_baseline_models_root() / "few_shot_gen" / "pipeline" / "01_generate_splits.py"
     spec = importlib.util.spec_from_file_location("sa2gfm_generate_splits", path)
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader

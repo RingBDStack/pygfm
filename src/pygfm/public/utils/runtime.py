@@ -8,7 +8,7 @@ from pathlib import Path
 import scipy.sparse as sp
 import scipy.sparse.linalg as sp_linalg
 from typing import Any, Tuple
-from torch_geometric.data import Data
+from torch_geometric.data import Data, HeteroData
 from torch_geometric.datasets import Amazon, Planetoid, TUDataset
 import torch_geometric.transforms as T
 from torch_geometric.utils import dropout_edge
@@ -96,6 +96,75 @@ def _find_data_pt_in_subdir(data_path: str) -> str | None:
         if os.path.isfile(p):
             return p
     return None
+
+
+def _maybe_hetero_to_homogeneous(raw: Any) -> Any:
+    """
+    Flat ``*.pt`` for ACM/DBLP/Freebase often stores :class:`~torch_geometric.data.HeteroData`,
+    which has no global ``x``. Homogeneous pretrain scripts need ``Data`` with ``.x`` and a
+    single ``edge_index`` (and optional ``edge_type``).
+    """
+    if isinstance(raw, HeteroData):
+        return raw.to_homogeneous()
+    return raw
+
+
+def _recover_global_x_from_stores(data: Data) -> Data:
+    """
+    Some ``.pt`` exports use ``features`` / ``node_feat`` instead of ``x``, or store a
+    :class:`Data` shell with ``x=None`` while a 2-D node matrix lives in another store key.
+    """
+    if getattr(data, "x", None) is not None:
+        return data
+    if not isinstance(data, Data):
+        return data
+    for alt in ("features", "node_feat", "node_features", "feat", "h", "attrs", "attr"):
+        t = getattr(data, alt, None)
+        if torch.is_tensor(t):
+            data.x = t.float() if t.dim() == 2 else t.float().unsqueeze(-1)
+            return data
+    n = data.num_nodes
+    if n is None and data.edge_index is not None and data.edge_index.numel() > 0:
+        n = int(data.edge_index.max().item()) + 1
+    if n is None or n <= 0:
+        return data
+    skip_sub = ("edge", "index", "label", "mask", "split", "train", "test", "val", "type", "batch", "ptr")
+    candidates: list[tuple[str, torch.Tensor]] = []
+    for k in sorted(data.keys()):
+        kl = k.lower()
+        if any(s in kl for s in skip_sub):
+            continue
+        v = data[k]
+        if not torch.is_tensor(v) or v.dim() != 2 or int(v.size(0)) != int(n):
+            continue
+        if v.numel() == 0:
+            continue
+        candidates.append((k, v.float()))
+    if len(candidates) == 1:
+        data.x = candidates[0][1]
+        return data
+    if len(candidates) > 1:
+        # Prefer the largest 2-D tensor (avoids gluing unrelated (n,1) scalars to real features).
+        data.x = max(candidates, key=lambda kv: kv[1].numel())[1]
+        return data
+    return data
+
+
+def _homogeneous_data_from_pt_file(pt_path: str, transform: Any) -> Data:
+    """Load ``.pt`` and normalize to a single :class:`Data` with ``x`` for GNN pretrain/finetune."""
+    raw = _safe_torch_load_pt(pt_path)
+    raw = _maybe_hetero_to_homogeneous(raw)
+    single = _torch_load_to_single_data(raw)
+    single = _maybe_hetero_to_homogeneous(single)
+    single = _recover_global_x_from_stores(single)
+    if getattr(single, "x", None) is None:
+        raise ValueError(
+            f"No node features after load ({pt_path!r}): expected HeteroData, Data with "
+            f"`x`, or a tensor store like `features`. Use node.dat/link.dat under a subfolder, "
+            f"or re-export from PyG."
+        )
+    single = _ensure_node_labels(single)
+    return _align_edge_type_with_edges(transform(single))
 
 
 def _torch_load_to_single_data(raw: Any) -> Data:
@@ -222,10 +291,15 @@ def load_all_datasets(data_root: str, *, allow_pyg_download: bool = False) -> li
     """
     Scan ``data_root`` for graphs; returns ``list[dict]`` compatible with ``{d['name']: d for d in all_raw}``.
 
-    **Flat ``*.pt``**: single-file graphs like ``data_root/Cora.pt`` loaded to one ``Data``;
-    names are matched **case-insensitively** to ``dataset_mapping`` (e.g. ``cora.pt`` -> ``Cora``).
+    **Order**: flat ``*.pt`` files are scanned **before** subdirectories. If both ``DBLP.pt`` and
+    ``DBLP/`` exist, the flat file wins (same canonical name is skipped for the folder).
 
-    **Subdirs**: ``<name>/data.pt`` or ``<name>/processed/data.pt``.
+    **Flat ``*.pt``**: single-file graphs like ``data_root/Cora.pt``; names match ``dataset_mapping``
+    case-insensitively (e.g. ``cora.pt`` -> ``Cora``).
+
+    **Subdirs**: ``<name>/data.pt`` or ``<name>/processed/data.pt``; HGPrompt-style ``node.dat`` +
+    ``link.dat`` for mapped heterogeneous names (ACM / DBLP / Freebase). Used when no flat
+    ``<name>.pt`` already loaded that name.
 
     **Else**:
     - If ``allow_pyg_download=False`` (default), do **not** fall back to PyG datasets
@@ -262,13 +336,19 @@ def load_all_datasets(data_root: str, *, allow_pyg_download: bool = False) -> li
     # Canonical names already loaded (avoid Cora.pt + Cora/ duplicate)
     loaded_canonical: set[str] = set()
 
-    # --- 0) Flat *.pt under data_root (e.g. exported Cora.pt) ---
     try:
         root_entries = os.listdir(data_root)
     except OSError as e:
         print(f"!! Error: cannot list {data_root}: {e}")
         return []
 
+    found_dirs = [
+        d
+        for d in root_entries
+        if os.path.isdir(os.path.join(data_root, d)) and not d.startswith((".", "_"))
+    ]
+
+    # --- 0) Flat *.pt first (e.g. DBLP.pt wins over DBLP/ when both exist) ---
     for entry in sorted(root_entries):
         if entry.startswith((".", "_")):
             continue
@@ -286,10 +366,7 @@ def load_all_datasets(data_root: str, *, allow_pyg_download: bool = False) -> li
             continue
         try:
             print(f">> Loading flat .pt: {canonical_name} ({pt_path})")
-            raw = _safe_torch_load_pt(pt_path)
-            data = _align_edge_type_with_edges(
-                transform(_ensure_node_labels(_torch_load_to_single_data(raw)))
-            )
+            data = _homogeneous_data_from_pt_file(pt_path, transform)
             datasets.append({"name": canonical_name, "ds": [data]})
             loaded_canonical.add(canonical_name)
             nn = data.num_nodes if data.num_nodes is not None else data.x.size(0)
@@ -297,13 +374,8 @@ def load_all_datasets(data_root: str, *, allow_pyg_download: bool = False) -> li
         except Exception as e:
             print(f"!! Failed to load flat file {entry}: {e}")
 
-    found_dirs = [
-        d
-        for d in root_entries
-        if os.path.isdir(os.path.join(data_root, d)) and not d.startswith((".", "_"))
-    ]
-
-    for name in found_dirs:
+    # --- 1) Subdirs (skipped if the same canonical name was already loaded from a flat .pt) ---
+    for name in sorted(found_dirs):
         data_path = os.path.join(data_root, name)
         map_key = _match_dataset_mapping_key(name, dataset_mapping)
         canonical_name = map_key if map_key is not None else name
@@ -315,10 +387,7 @@ def load_all_datasets(data_root: str, *, allow_pyg_download: bool = False) -> li
         if pt_path is not None:
             try:
                 print(f">> Loading data.pt: {canonical_name} ({pt_path})")
-                raw = _safe_torch_load_pt(pt_path)
-                data = _align_edge_type_with_edges(
-                    transform(_ensure_node_labels(_torch_load_to_single_data(raw)))
-                )
+                data = _homogeneous_data_from_pt_file(pt_path, transform)
                 datasets.append({"name": canonical_name, "ds": [data]})
                 loaded_canonical.add(canonical_name)
                 nn = data.num_nodes if data.num_nodes is not None else data.x.size(0)
@@ -341,28 +410,42 @@ def load_all_datasets(data_root: str, *, allow_pyg_download: bool = False) -> li
                 if os.path.exists(os.path.join(data_path, "node.dat")):
                     print(f">> Loading HGPROMPT layout: {canonical_name}")
 
-                    features = []
+                    # First pass: read all lines to determine node count and max feature dim
+                    all_lines = []
                     max_dim = 0
-                    with open(os.path.join(data_path, "node.dat"), "r") as f:
+                    with open(os.path.join(data_path, "node.dat"), "r", encoding="utf-8") as f:
                         for line in f:
                             parts = line.strip().split("\t")
-                            if len(parts) > 3:
-                                feat = [float(x) for x in parts[3].split(",")]
-                                if max_dim == 0:
-                                    max_dim = len(feat)
+                            all_lines.append(parts)
+                            if len(parts) >= 4:
+                                feat = [float(x) for x in parts[3].split(",") if x.strip()]
+                                if feat:
+                                    max_dim = max(max_dim, len(feat))
 
+                    if max_dim == 0:
+                        max_dim = 1  # fallback if no node has features
+
+                    features = []
+                    for parts in all_lines:
+                        if len(parts) >= 4:
+                            feat = [float(x) for x in parts[3].split(",") if x.strip()]
+                            if feat:
                                 if len(feat) == max_dim:
                                     features.append(feat)
                                 else:
-                                    feat = feat[:max_dim] + [0.0] * (max_dim - len(feat))
-                                    features.append(feat)
+                                    features.append(feat[:max_dim] + [0.0] * (max_dim - len(feat)))
+                            else:
+                                features.append([0.0] * max_dim)
+                        else:
+                            # Node without attributes (3 columns) → zero features
+                            features.append([0.0] * max_dim)
 
                     x = torch.tensor(features, dtype=torch.float)
                     num_nodes = x.size(0)
 
                     edge_index, edge_type = [], []
                     if os.path.exists(os.path.join(data_path, "link.dat")):
-                        with open(os.path.join(data_path, "link.dat"), "r") as f:
+                        with open(os.path.join(data_path, "link.dat"), "r", encoding="utf-8") as f:
                             for line in f:
                                 parts = line.strip().split("\t")
                                 if len(parts) < 3:
@@ -377,6 +460,25 @@ def load_all_datasets(data_root: str, *, allow_pyg_download: bool = False) -> li
                         et = torch.tensor(edge_type, dtype=torch.long)
                         current_data = Data(x=x, edge_index=ei)
                         current_data.edge_type = et
+
+                        # Load labels from label.dat
+                        # HGPRompt format: node_id \t node_name \t node_type \t label1,label2,...
+                        # Multi-label → take first label as primary class
+                        label_path = os.path.join(data_path, "label.dat")
+                        if os.path.exists(label_path):
+                            labels = [-1] * num_nodes
+                            with open(label_path, "r", encoding="utf-8") as f:
+                                for line in f:
+                                    parts = line.strip().split("\t")
+                                    if len(parts) >= 4:
+                                        nid = int(parts[0])
+                                        label_strs = parts[3].split(",")
+                                        if label_strs and label_strs[0] != "":
+                                            labels[nid] = int(label_strs[0])
+                            current_data.y = torch.tensor(labels, dtype=torch.long)
+                        else:
+                            current_data.y = torch.zeros(num_nodes, dtype=torch.long)
+
                         datasets.append({"name": canonical_name, "ds": [current_data]})
                         loaded_canonical.add(canonical_name)
                         print(

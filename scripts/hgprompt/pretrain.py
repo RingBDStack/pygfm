@@ -14,12 +14,13 @@ os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
 warnings.filterwarnings("ignore")
 
 import torch
-from torch_geometric.data import Data, Batch
+from torch_geometric.data import Data, Batch, HeteroData
 
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = driver_script_repo_root(__file__)
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -115,6 +116,15 @@ def main():
     aligners = []
     for idx, s in enumerate(sources):
         raw = s["ds"][0]
+        if isinstance(raw, HeteroData):
+            raw = raw.to_homogeneous()
+        if getattr(raw, "x", None) is None:
+            raise ValueError(
+                f"HGPrompt pretrain needs node features (data.x) for domain {s['name']!r}, "
+                "but x is None. Heterogeneous graphs should be stored as torch_geometric.data.HeteroData "
+                "in the .pt file (load_all_datasets will convert via to_homogeneous), or use the "
+                "node.dat / link.dat folder layout under datasets/hgprompt/<Name>/."
+            )
         feat = raw.x.numpy()
         aligner = DomainAlignment(n_components=args.unify_dim)
         aligner.fit(feat)
@@ -184,8 +194,11 @@ def main():
             print("Early stopping.")
             break
 
-    # Save under ckpts/hgprompt/{dataset-combination-folder}/
-    dataset_folder = _build_dataset_folder_name(ordered_names)
+    # Save under ckpts/hgprompt/{target}/ for leave-one-out, else {dataset-combination-folder}/
+    if args.target:
+        dataset_folder = args.target.lower()
+    else:
+        dataset_folder = _build_dataset_folder_name(ordered_names)
     args.save_dir = os.path.join("ckpts", "hgprompt", dataset_folder)
     os.makedirs(args.save_dir, exist_ok=True)
     ckpt_path = os.path.join(args.save_dir, args.save_name)

@@ -5,8 +5,28 @@ from pathlib import Path
 
 
 def get_repo_root() -> Path:
-    # pygfm/baseline_models/multigprompt/paths.py -> repo root
-    return Path(__file__).resolve().parents[3]
+    """
+    User project root (``~/gfm``), not the ``pygfm`` install directory.
+
+    ``parents[3]`` only works for a full git checkout with ``repo/pygfm/...`` or ``repo/src/pygfm``;
+    under ``pip install``, ``__file__`` lives in ``site-packages`` and that heuristic points at
+    ``site-packages`` — then ``datasets/multigprompt`` resolves incorrectly.
+    """
+    for key in ("PYGFM_REPO_ROOT", "MULTIGPROMPT_REPO_ROOT"):
+        v = os.environ.get(key)
+        if v:
+            p = Path(v).expanduser().resolve()
+            if p.is_dir():
+                return p
+    here = Path(__file__).resolve()
+    if "site-packages" in here.parts:
+        return Path.cwd().resolve()
+    for anc in here.parents:
+        if not (anc / "pyproject.toml").is_file():
+            continue
+        if (anc / "src" / "pygfm").is_dir() or (anc / "pygfm" / "baseline_models").is_dir():
+            return anc
+    return Path.cwd().resolve()
 
 
 def get_datasets_root() -> Path:
@@ -43,6 +63,10 @@ def get_upstream_data_dir(dataset: str) -> Path:
     Override parent only: ``MULTIGPROMPT_UPSTREAM_DATA_DIR`` points to the parent of
     those folders (e.g. ``datasets/multigprompt``), and this function returns
     ``<parent>/<dataset>/``. Legacy ``MULTIGPROMPT_DATA_DIR`` uses a single flat dir.
+
+    With ``pip install`` (no checkout), set ``PYGFM_REPO_ROOT`` / ``MULTIGPROMPT_REPO_ROOT`` to
+    your project root (e.g. ``~/gfm``) so ``datasets/multigprompt`` resolves correctly; otherwise
+    :func:`get_repo_root` falls back to :func:`Path.cwd`.
     """
     ds = dataset.lower()
     if (p := _legacy_combined_data_dir()) is not None:

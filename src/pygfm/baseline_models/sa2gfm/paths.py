@@ -134,3 +134,9 @@ class Paths:
 
 
 paths = Paths()
+
+
+def reinit_paths() -> None:
+    """Rebuild global ``paths`` after ``SA2GFM_DATA_ROOT`` is set (e.g. by ``scripts/sa2gfm/_setup_repo.py``)."""
+    global paths
+    paths = Paths()

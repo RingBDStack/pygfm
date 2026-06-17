@@ -10,8 +10,9 @@ Usage:
 import os
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]  # .../gfm-toolbox-main
+PROJECT_ROOT = driver_script_repo_root(__file__, parents_up_to_repo=3)  # .../gfm-toolbox-main
 DATA_DIR = PROJECT_ROOT / "datasets" / "graphtext" / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 

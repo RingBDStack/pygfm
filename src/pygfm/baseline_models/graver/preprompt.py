@@ -22,12 +22,12 @@ class InitDisenLayer(nn.Module):
         super().__init__()
         self.num_factors = num_factors
         self.hid_dim = (hid_dim // num_factors) * num_factors
-        self.linear = nn.Linear(inp_dim, self.hid_dim)
-        nn.init.xavier_uniform_(self.linear.weight)
-        nn.init.zeros_(self.linear.bias)
+        self.factor_lins = nn.Linear(inp_dim, self.hid_dim)
+        nn.init.xavier_uniform_(self.factor_lins.weight)
+        nn.init.zeros_(self.factor_lins.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        z = self.linear(x).view(-1, self.num_factors, self.hid_dim // self.num_factors)
+        z = self.factor_lins(x).view(-1, self.num_factors, self.hid_dim // self.num_factors)
         return F.normalize(F.relu(z), dim=2)
 
 
@@ -39,19 +39,22 @@ class RoutingLayer(nn.Module):
         self.routit = routit
         self.tau = tau
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, edges: torch.Tensor) -> torch.Tensor:
         """
         :param x: [N, K, D_factor] factorized node states
-        :param edge_index: [2, E] (source → target)
+        :param edges: coalesced sparse COO adjacency [N, N]
         """
-        src, trg = edge_index[0], edge_index[1]
+        edges = edges.coalesce()
+        src = edges.indices()[0]
+        trg = edges.indices()[1]
+        z = x
         c = x
         for _ in range(self.routit):
-            p = (x[trg] * c[src]).sum(dim=2, keepdim=True)
+            p = (z[trg] * c[src]).sum(dim=2, keepdim=True)
             p = F.softmax(p / self.tau, dim=1)
-            weight_sum = p * x[trg]
-            agg = torch.zeros_like(x).index_add_(0, src, weight_sum)
-            c = F.normalize(x + agg, dim=2)
+            weight_sum = p * z[trg]
+            c = z + torch.zeros_like(z).index_add_(0, src, weight_sum)
+            c = F.normalize(c, dim=2)
         return c
 
 
@@ -87,10 +90,13 @@ class DisenGCN(nn.Module):
     def output_dim(self) -> int:
         return self.init_disen.hid_dim
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, edges: torch.Tensor) -> torch.Tensor:
+        from .graph import as_sparse_adj
+
+        adj = as_sparse_adj(edges, x.size(0))
         z = self.init_disen(x)
         for conv in self.conv_layers:
-            z = conv(z, edge_index)
+            z = conv(z, adj)
             z = F.dropout(F.relu(z), p=self.dropout, training=self.training)
         return z.reshape(z.size(0), -1)
 

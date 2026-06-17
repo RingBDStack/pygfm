@@ -262,6 +262,11 @@ def _load_data_from_pyg_pt(pt_path: Path, dataset_str: str):
 
 def load_data(dataset_str): # {'pubmed', 'citeseer', 'cora'}
     """Load data."""
+    # Flat ``datasets/multigprompt/Cora.pt`` (case-insensitive stem) before per-dataset ``.../cora/``.
+    root = get_datasets_root()
+    pt = _find_pyg_graph_pt(root, dataset_str)
+    if pt is not None:
+        return _load_data_from_pyg_pt(pt, dataset_str)
     data_dir = Path(get_upstream_data_dir(dataset_str))
     pt = _find_pyg_graph_pt(data_dir, dataset_str)
     if pt is not None:

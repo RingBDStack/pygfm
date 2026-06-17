@@ -14,11 +14,12 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = driver_script_repo_root(__file__)
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 

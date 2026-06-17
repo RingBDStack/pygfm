@@ -10,6 +10,7 @@ import numpy as np
 import torch
 
 from pygfm.baseline_models.sa2gfm.paths import paths
+from pygfm.public.utils.legacy_pickles import register_pygfm_unpickling_aliases
 from pygfm.public.cli.export_yaml import add_export_yaml_arguments, handle_export_args
 from pygfm.public.cli.yaml_config import load_yaml, merge_yaml_defaults
 
@@ -138,6 +139,7 @@ from pygfm.public.utils import set_seed as _set_seed
 
 
 def _torch_load(path: str):
+    register_pygfm_unpickling_aliases()
     try:
         return torch.load(path, map_location="cpu", weights_only=False)
     except TypeError:
@@ -230,6 +232,36 @@ def get_args():
         default=-1,
         help="Number of few-shot splits to run (-1: 20 for all datasets)",
     )
+    parser.add_argument(
+        "--split-pool-size",
+        type=int,
+        default=-1,
+        help="If >0, run splits in [split-pool-start, split-pool-start + split-pool-size)",
+    )
+    parser.add_argument(
+        "--split-pool-start",
+        type=int,
+        default=0,
+        help="Start index when --split-pool-size is set (default 0)",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=-1,
+        help="If >0, after the run print summary for the top-k splits by test accuracy",
+    )
+    parser.add_argument(
+        "--results-json",
+        type=str,
+        default="",
+        help="Optional path to save per-split results and top-k summary as JSON",
+    )
+    parser.add_argument(
+        "--split-ids-json",
+        type=str,
+        default="",
+        help='JSON file with a "split_ids" list; run only those few-shot splits',
+    )
     parser.add_argument("--no-swanlab", action="store_true")
 
     pre = argparse.ArgumentParser(add_help=False)
@@ -268,9 +300,17 @@ def get_args():
         args.data_path = str(sub / f"{ds_key}_evasion_final.pt")
     elif args.attack_type == "random":
         if args.random_attack_type == "feature":
-            args.data_path = str(paths.attack_random_dir / f"{ds_key}_feature_p{args.attack_ratio}.pt")
+            fname = f"{ds_key}_feature_p{args.attack_ratio}.pt"
         else:
-            args.data_path = str(paths.attack_random_dir / f"{ds_key}_structure_p{args.attack_ratio}.pt")
+            fname = f"{ds_key}_structure_p{args.attack_ratio}.pt"
+        primary = paths.attack_random_dir / fname
+        fallback = paths.data_root / "attacked_data_random" / fname
+        if primary.is_file():
+            args.data_path = str(primary)
+        elif fallback.is_file():
+            args.data_path = str(fallback)
+        else:
+            args.data_path = str(primary)
     else:
         raise ValueError(args.attack_type)
 

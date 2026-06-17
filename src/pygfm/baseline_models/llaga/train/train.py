@@ -1026,7 +1026,14 @@ def _train():
     local_rank = training_args.local_rank
     compute_dtype = (torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32))
 
-    if "tmp" not in training_args.output_dir and os.path.exists(training_args.output_dir):
+    _allow_nonempty = bool(getattr(model_args, "offline_smoke", False)) or os.environ.get(
+        "LLAGA_ALLOW_NONEMPTY_OUTPUT", ""
+    ).strip().lower() in ("1", "true", "yes")
+    if (
+        not _allow_nonempty
+        and "tmp" not in training_args.output_dir
+        and os.path.exists(training_args.output_dir)
+    ):
         if bool(os.listdir(training_args.output_dir)):
             print(f"{training_args.output_dir} already exists and not empty!!!!")
             return

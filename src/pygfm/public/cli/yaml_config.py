@@ -45,7 +45,11 @@ def parse_args_with_optional_yaml(
             for a in parser._actions
             if getattr(a, "dest", None) not in (None, "help", "config")
         }
-        filtered = {k: v for k, v in data.items() if k in dests}
+        filtered: dict[str, Any] = {}
+        for k, v in data.items():
+            nk = str(k).replace("-", "_")
+            if nk in dests:
+                filtered[nk] = v
         parser.set_defaults(**filtered)
     return parser.parse_args(rest)
 
@@ -109,6 +113,49 @@ def merge_yaml_defaults(
         parser.set_defaults(**merged)
 
 
+def _argv_suffix_for_required_options(
+    parser: argparse.ArgumentParser,
+    cfg: dict[str, Any],
+) -> list[str]:
+    """
+    Python 3.12 ``argparse``: ``required=True`` is **not** satisfied by ``set_defaults()`` alone
+    when ``parse_args(rest)`` has no explicit token for that option. Build ``['--dataset', 'cora', ...]``
+    from the merged YAML so ``parse_args(rest + suffix)`` succeeds.
+    """
+    skip = EXPORT_ARG_DESTS | {"config"}
+    norm = {
+        str(k).replace("-", "_"): v
+        for k, v in cfg.items()
+        if str(k).replace("-", "_") not in skip
+    }
+    tail: list[str] = []
+    for action in parser._actions:
+        if not getattr(action, "required", False):
+            continue
+        dest = action.dest
+        if not dest or dest in ("help", "config"):
+            continue
+        if dest not in norm:
+            continue
+        v = norm[dest]
+        if v is None:
+            continue
+        opts = getattr(action, "option_strings", ()) or ()
+        opt = opts[0] if opts else "--" + dest.replace("_", "-")
+        act = getattr(action, "action", "store")
+        if act in ("store_true", "store_false"):
+            if isinstance(v, bool):
+                if act == "store_true" and v:
+                    tail.append(opt)
+                elif act == "store_false" and not v:
+                    tail.append(opt)
+            continue
+        if act == "count":
+            continue
+        tail.extend([opt, str(v)])
+    return tail
+
+
 def parse_args_with_config(
     parser: argparse.ArgumentParser,
     argv: Optional[list[str]] = None,
@@ -139,8 +186,8 @@ def parse_args_with_config(
     if pre_args.config:
         cfg = load_yaml(pre_args.config)
     merge_yaml_defaults(parser, cfg)
-
-    args = parser.parse_args(rest)
+    suffix = _argv_suffix_for_required_options(parser, cfg)
+    args = parser.parse_args(rest + suffix)
     if getattr(args, "config", None) is None and pre_args.config is not None:
         args.config = pre_args.config
     handle_export_args(parser, args, rest, script_file=script_file)

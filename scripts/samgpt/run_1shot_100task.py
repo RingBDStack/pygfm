@@ -9,8 +9,9 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = driver_script_repo_root(__file__)
 DATASETS = ["Cora", "Citeseer", "Pubmed", "Photo", "Computers"]
 
 

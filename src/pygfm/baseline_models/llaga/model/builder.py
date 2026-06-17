@@ -13,6 +13,7 @@
 #    limitations under the License.
 
 
+import json
 import os
 import warnings
 
@@ -23,9 +24,27 @@ from ..utils.constants import DEFAULT_GRAPH_START_TOKEN, DEFAULT_GRAPH_END_TOKEN
 from huggingface_hub import hf_hub_download
 
 
+def _auto_config_from_llaga_checkpoint_dir(model_path: str) -> AutoConfig:
+    """
+    Build ``AutoConfig`` from ``<model_path>/config.json`` without ``AutoConfig.from_pretrained``.
+
+    Recent ``huggingface_hub`` validates *any* string with ``validate_repo_id`` before deciding
+    whether a path is local; absolute checkpoint dirs can still fail. ``from_dict`` avoids that.
+    """
+    cfg_path = os.path.join(model_path, "config.json")
+    if not os.path.isfile(cfg_path):
+        raise FileNotFoundError(
+            f"Missing config.json under LLaGA checkpoint directory {model_path!r}. "
+            "Train (or copy) an output_dir that contains config.json and mm_projector.bin."
+        )
+    with open(cfg_path, encoding="utf-8") as f:
+        raw = json.load(f)
+    return AutoConfig.from_dict(raw)
 
 
 def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", device="cuda", cache_dir="../../checkpoint"):
+    # HF hub treats ``./...`` like a repo id and raises HFValidationError; use a real filesystem path.
+    model_path = os.path.abspath(os.path.expanduser(str(model_path)))
     kwargs = {"device_map": device_map}
 
     if load_8bit:
@@ -46,7 +65,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         if 'lora' in model_name.lower() and model_base is None:
             warnings.warn('There is `lora` in model name but no `model_base` is provided. If you are loading a LoRA model, please provide the `model_base` argument. Detailed instruction: https://github.com/haotian-liu/LLaVA#launch-a-model-worker-lora-weights-unmerged.')
         if 'lora' in model_name.lower() and model_base is not None:
-            lora_cfg_pretrained = AutoConfig.from_pretrained(model_path)
+            lora_cfg_pretrained = _auto_config_from_llaga_checkpoint_dir(model_path)
             tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
             print('Loading LLaGA from base model...')
             model = LlagaLlamaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, cache_dir=cache_dir,  **kwargs)
@@ -94,13 +113,13 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             #     model = LlavaLlamaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
             if 'opt' in model_base:
                 tokenizer = AutoTokenizer.from_pretrained(model_base)
-                cfg_pretrained = AutoConfig.from_pretrained(model_path)
+                cfg_pretrained = _auto_config_from_llaga_checkpoint_dir(model_path)
                 model = LlagaOPTForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained,
                                                               cache_dir=cache_dir,
                                                               **kwargs)
             else:
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
-                cfg_pretrained = AutoConfig.from_pretrained(model_path)
+                cfg_pretrained = _auto_config_from_llaga_checkpoint_dir(model_path)
                 model = LlagaLlamaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, cache_dir=cache_dir,
                                                               **kwargs)
             # model.get_model().initialize_graph_modules(cfg_pretrained)

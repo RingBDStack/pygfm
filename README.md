@@ -1,32 +1,32 @@
 <div align="center">
-<img src="./assets/LOGO.png" style="width:30%; display:block; margin:0 auto;" alt="LOGO">
+<img src="https://raw.githubusercontent.com/RingBDStack/pygfm/main/assets/LOGO.png" style="width:30%; display:block; margin:0 auto;" alt="LOGO">
 
 [![PyPI version](https://img.shields.io/pypi/v/python-gfm?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/python-gfm/)
 [![Python](https://img.shields.io/pypi/pyversions/python-gfm?logo=python&logoColor=white)](https://pypi.org/project/python-gfm/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/python-gfm?color=orange)](https://pypi.org/project/python-gfm/)
 
-[Installation](#installation) · [Quick Start](#quick-start) · [Supported Baselines](#supported-baselines) · [Documentation](#baseline-documentation)
+[Installation](#installation) · [Quick Start](#quick-start) · [Repository layout](#repository-layout) · [Supported Baselines](#supported-baselines) · [Documentation](#baseline-documentation)
 
 </div>
 
 ---
 
-`pygfm` is a unified Python toolkit for **Graph Foundation Model (GFM)** research. It integrates **19 state-of-the-art baseline methods** under a single, pip-installable package with shared utilities, standardized interfaces, and fully reproducible experiment pipelines.
+`pygfm` is a unified Python toolkit for **Graph Foundation Model (GFM)** research. It integrates **17 state-of-the-art baseline methods** under a single, pip-installable package with shared utilities, standardized interfaces, and fully reproducible experiment pipelines.
 
 Developed by **Beihang University · School of Computer Science and Engineering · ACT Lab · MAGIC GROUP**.
 
 ## Framework Overview
 
 <div align="center">
-  <img src="assets/framework.png" alt="PyGFM Framework Overview" width="90%">
+  <img src="https://raw.githubusercontent.com/RingBDStack/pygfm/main/assets/framework.png" alt="PyGFM Framework Overview" width="90%">
 </div>
 
 PyGFM is organized into four stacked layers — **Graph Data Abstraction → Alignment & Fusion Bridge → Representation Backbones → Task Heads & Orchestration** — with a unified CLI, model recipes, and an auto-experiment tracker sitting on top.
 
 ## Highlights
 
-- **One package, 19 baselines** — prompt-based GFMs, structure-aware models, LLM-integrated approaches, and retrieval-augmented methods all available via a single `pip install`.
+- **One package, 17 baselines** — prompt-based GFMs, structure-aware models, LLM-integrated approaches, and retrieval-augmented methods all available via a single `pip install`.
 - **Reproducible pipelines** — every baseline ships with YAML-driven experiment configs, training scripts, and evaluation helpers.
 - **Shared backbone library** — common GNN encoders, loss functions, and data utilities are factored out and reused across all baselines, reducing code duplication.
 - **CLI-first design** — launch pre-training, fine-tuning, and evaluation jobs directly from the command line without writing any boilerplate.
@@ -34,129 +34,103 @@ PyGFM is organized into four stacked layers — **Graph Data Abstraction → Ali
 
 ## Installation
 
-### Minimal install (utilities only)
+### CUDA (recommended)
+
+**Default (fresh env): `torch` + `light` together** — PyTorch wheel index + PyPI + PyG find-links:
 
 ```bash
-pip install python-gfm
+pip install "python-gfm[torch,light]" --index-url https://download.pytorch.org/whl/cu128 --extra-index-url https://pypi.org/simple -f https://data.pyg.org/whl/torch-2.8.0+cu128.html
 ```
 
-### With PyTorch + PyG (recommended for running experiments)
+**If CUDA PyTorch / PyG is already in the env** — install **`[light]`** from PyPI only:
 
 ```bash
-# 1. Install PyTorch with CUDA 12.8 support
-pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
-
-# 2. Install pygfm with the full ML stack (PyG extensions are resolved automatically)
-pip install "python-gfm[torch]" -f https://data.pyg.org/whl/torch-2.8.0+cu128.html
+pip install "python-gfm[light]"
 ```
 
-> **CPU-only machines:** replace the CUDA index URLs with `https://download.pytorch.org/whl/cpu` and `https://data.pyg.org/whl/torch-2.8.0+cpu.html` respectively.
-
-### Development install (full checkout with experiment scripts)
+**LLM-integrated GFMs** — after **`[torch]`** and **`[light]`** are in place:
 
 ```bash
-git clone <repo-url> && cd pygfm
-pip install -e ".[torch,dev]"
+pip install "python-gfm[llm]"
 ```
 
-The `dev` extra adds `pytest` and `ruff` for testing and linting.
+> **CPU:** `--index-url https://download.pytorch.org/whl/cpu` and `-f https://data.pyg.org/whl/torch-2.8.0+cpu.html`.
+
+### Extras overview
+
+| Extra | Contents (short) |
+|-------|------------------|
+| **`torch`** | PyTorch Geometric stack, graph libs, sklearn helpers |
+| **`light`** | NumPy/Pandas stack, Transformers, Hydra, APIs, Gradio, W&B, SwanLab |
+| **`llm`** | PEFT, bitsandbytes, datasets, fschat, Ray, Vertex, DeepSpeed |
+
+### Optional `dev` extra
+
+`pip install "python-gfm[dev]"` adds `pytest` and `ruff` for testing and linting.
 
 ## Quick Start
 
-```python
-import pygfm
+This repository is the **PyPI package source**. For installation, quick start, YAML configs, Hugging Face asset download, CLI commands, and per-baseline experiment steps, see the **[PyPI project page](https://pypi.org/project/python-gfm/)**.
 
-print(pygfm.__version__)
-```
-
-Run a pre-training job from the CLI:
-
-```bash
-# SA2GFM contrastive pre-training
-gfm-sa2gfm-pretrain -c scripts/sa2gfm/configs/pretrain.yaml
-
-# SA2GFM downstream fine-tuning
-gfm-sa2gfm-downstream -c scripts/sa2gfm/configs/downstream.yaml
-```
-
-## Package Structure
+## Repository layout
 
 ```
-pygfm/
-├── src/pygfm/
-│   ├── baseline_models/   # 19 GFM baseline implementations
-│   ├── public/            # Shared utilities, losses, and backbone encoders
-│   │   ├── backbone_models/
-│   │   ├── utils/
-│   │   └── cli/
-│   ├── private/           # Core encoders and internal data generation
-│   └── cli/               # Console entry points
-└── scripts/               # Per-baseline experiment scripts and configs
-    ├── <baseline>/
-    │   ├── README.md
-    │   ├── configs/
-    │   ├── pretrain.py / downstream.py / ...
-    │   └── eval_script/
+.
+├── assets/                     # Logo and framework figures
+├── ckpts/                      # Example / default checkpoint outputs
+├── dist/                       # Built wheel artifacts (release)
+├── scripts/                    # Per-baseline experiment scripts and configs
+│   ├── bridge/
+│   ├── gcot/
+│   ├── graphgpt/
+│   ├── graphkeeper/
+│   ├── graphmore/
+│   ├── graphprompt/
+│   ├── graphtext/
+│   ├── graver/
+│   ├── hgprompt/
+│   ├── llaga/
+│   ├── mdgfm/
+│   ├── mdgpt/
+│   ├── multigprompt/
+│   ├── oneforall/
+│   ├── rag_gfm/
+│   ├── sa2gfm/
+│   └── samgpt/
+├── src/pygfm/                  # Installable package source
+│   ├── baseline_models/        # GFM baseline implementations (17 methods)
+│   ├── cli/                    # Console entry points and YAML stage runners
+│   ├── download/               # `python -m pygfm.download` module shim
+│   ├── private/                # Core encoders and internal helpers
+│   │   ├── core/
+│   │   └── utlis/              # Domain alignment, RAG builders, data gen, etc.
+│   ├── public/                 # Shared utilities exposed across baselines
+│   │   ├── backbone_models/    # Reusable GNN encoders
+│   │   ├── cli/                # YAML / config helpers
+│   │   └── utils/              # Data, loss, LLM, and misc helpers
+│   ├── tools/                  # In-package maintenance utilities
+│   ├── tool_download.py        # Hugging Face dataset downloader
+│   ├── _scripts_bundle.zip     # Packaged copy of `scripts/` (shipped in wheel)
+│   └── __main__.py             # `python -m pygfm` entry (run YAML / download)
+├── tools/                      # Repo-level build helpers (e.g. wheel bundling)
+├── pyproject.toml              # Package metadata and dependency pins
+└── README.md
 ```
+
+After `pip install`, the installed package exposes the same `pygfm/` tree (with `scripts/` bundled as `_scripts_bundle.zip` inside the wheel).
 
 ## Supported Baselines
 
 | Category | Methods |
 |---|---|
 | **Prompt-based GFM** | MDGPT, SAMGPT, MDGFM, GraphPrompt, HGPrompt, MultiGPrompt, GCoT |
-| **Structure-aware GFM** | SA2GFM, Bridge, GraphKeeper, GraphMore, Graver, BIM-GFM |
+| **Structure-aware GFM** | SA2GFM, Bridge, GraphKeeper, GraphMore, Graver |
 | **LLM-integrated GFM** | GraphGPT, GraphText, LLaGA, OneForAll |
 | **Retrieval-augmented GFM** | RAG-GFM |
-| **Classic Baseline** | Classic GNN |
-
-## Running Experiments
-
-All scripts are under `scripts/<baseline>/` and should be run from the repository root.
-
-```bash
-# Prompt-based: MDGPT pre-training
-python scripts/mdgpt/pretrain.py
-
-# Structure-aware: SA2GFM downstream fine-tuning
-python scripts/sa2gfm/downstream.py
-
-# LLM-integrated: GCoT full pipeline
-python scripts/gcot/pretrain.py
-python scripts/gcot/finetune.py
-python scripts/gcot/finetune_graph.py
-
-# LLM-integrated: GraphGPT (YAML-driven HuggingFace-style training)
-python scripts/graphgpt/run_with_config.py -c scripts/graphgpt/configs/train_mem_template.yaml
-```
-
-## Console Commands
-
-After installation the following CLI entry points are registered:
-
-| Command | Description |
-|---|---|
-| `pygfm` / `gfm` | Generic YAML-driven runner (`-c <config.yaml>`) |
-| `gfm-sa2gfm-pretrain` | SA2GFM contrastive pre-training |
-| `gfm-sa2gfm-downstream` | SA2GFM MoE downstream fine-tuning |
-
-## Configuration
-
-All experiment hyperparameters are stored as YAML files under `scripts/<baseline>/configs/`. Pass configs via the `-c` flag:
-
-```bash
-python scripts/<baseline>/pretrain.py -c scripts/<baseline>/configs/default.yaml
-```
-
-**API keys:** baselines that call external LLM APIs (e.g., GraphText) read credentials from a local env file. **Never commit API keys to the repository.** Copy the example template and fill in your keys:
-
-```bash
-cp scripts/graphtext/config/user/env.yaml.example scripts/graphtext/config/user/env.yaml
-# Then edit env.yaml and add your API key
-```
 
 ## Baseline Documentation
 
-Each baseline ships a dedicated README with setup instructions, data preparation steps, and evaluation notes:
+Per-method setup, data layout, and evaluation notes live under `scripts/<baseline>/`. Index:
 
 | Baseline | Docs |
 |---|---|
@@ -178,17 +152,65 @@ Each baseline ships a dedicated README with setup instructions, data preparation
 | OneForAll | [scripts/oneforall/README.md](scripts/oneforall/README.md) |
 | RAG-GFM | [scripts/rag_gfm/README.md](scripts/rag_gfm/README.md) |
 
+Several baselines also ship an `Experiment-Manual.md` under `scripts/<baseline>/` with step-by-step reproduction notes.
+
 ## Requirements
+
+Versions below match [`pyproject.toml`](pyproject.toml).
+
+### Base (always installed)
 
 | Dependency | Version |
 |---|---|
 | Python | ≥ 3.12 |
-| PyTorch | 2.8.0 (CUDA 12.8 recommended) |
-| PyTorch Geometric | ≥ 2.3.0 |
-| Transformers | ≥ 4.36.0 |
-| Accelerate | ≥ 0.26.0 |
+| NumPy | ≥ 1.20 |
+| PyYAML | ≥ 6 |
 
-See [`pyproject.toml`](pyproject.toml) for the full dependency specification.
+### `[torch]` extra
+
+| Dependency | Version |
+|---|---|
+| PyTorch | 2.8.0 |
+| PyTorch Geometric | 2.7.0 |
+| torch-scatter | 2.1.2 |
+| torch-sparse | 0.6.18 |
+| torch-cluster | 1.6.3 |
+| torch-spline-conv | 1.2.2 |
+| Lightning | ≥ 2.2.0, < 3 |
+| torchmetrics | ≥ 1.3.0 |
+| Accelerate | ≥ 0.26.0 |
+| OGB | 1.3.6 |
+| geoopt | 0.5.1 |
+| scikit-learn | ≥ 1.3.0 |
+
+### `[light]` extra
+
+| Dependency | Version |
+|---|---|
+| Transformers | ≥ 4.36.0 |
+| Hugging Face Hub | 1.10.2 |
+| Hydra Core | 1.3.2 |
+| OmegaConf | 2.3.0 |
+| NumPy | 2.3.2 |
+| Pandas | 3.0.2 |
+| scikit-learn | 1.8.0 |
+| Gradio | ≥ 5.0.0 |
+| W&B | ≥ 0.19.0 |
+| SwanLab | ≥ 0.7.11, < 0.8 |
+
+### `[llm]` extra
+
+| Dependency | Version |
+|---|---|
+| Transformers | 5.5.4 |
+| Accelerate | 1.13.0 |
+| PEFT | 0.19.0 |
+| bitsandbytes | 0.49.2 |
+| DeepSpeed | 0.18.9 |
+| datasets | 4.8.4 |
+| sentence-transformers | 5.4.1 |
+
+See [`pyproject.toml`](pyproject.toml) for the full pinned dependency list.
 
 ## License
 
@@ -201,5 +223,5 @@ This project is licensed under the **[Apache License 2.0](LICENSE)**.
 ---
 
 <div align="center">
-<sub>If you find this toolkit useful in your research, please consider starring the repository ⭐</sub>
+<sub>If you find this toolkit useful in your research, please consider <a href="https://github.com/RingBDStack/pygfm/">starring the repository</a> ⭐</sub>
 </div>

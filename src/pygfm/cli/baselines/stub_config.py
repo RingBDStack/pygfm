@@ -33,7 +33,6 @@ def _all_pairs() -> list[tuple[str, str]]:
         for s in _STANDARD_STAGES:
             pairs.add((b, s))
     pairs.update(SCRIPT_OVERRIDES.keys())
-    pairs.add(("sa2gfm", "detect"))
     return sorted(pairs)
 
 

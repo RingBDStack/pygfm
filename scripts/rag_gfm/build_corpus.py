@@ -18,12 +18,14 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = driver_script_repo_root(__file__)
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pygfm.private.utlis.rag_gfm import RAGCorpusBuilderConfig, build_rag_corpus
+from pygfm.public.cli.yaml_config import parse_args_with_optional_yaml
 
 
 def main():
@@ -61,7 +63,7 @@ def main():
         default="cuda",
         help="Device (e.g. cuda/cpu)",
     )
-    args = p.parse_args()
+    args = parse_args_with_optional_yaml(p)
 
     # Relative paths resolved from repo root
     corpus_output = args.corpus_output

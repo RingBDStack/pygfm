@@ -40,24 +40,71 @@ def _parse_pt_to_data(obj) -> Data:
     raise TypeError(f"Cannot parse .pt: expected Data or (dict, slices), got {type(obj)}")
 
 
+def resolve_rag_gfm_graph_pt_path(data_root: str, dataset_name: str) -> Optional[str]:
+    """
+    Resolve a graph ``.pt`` under ``data_root`` for RAG-GFM loaders.
+
+    Tries, in order:
+
+    1. ``{data_root}/{Dataset}/processed/data.pt`` (exact name, lower, capitalized, upper)
+    2. Same path with a **subdir** whose name matches ``dataset_name`` case-insensitively
+    3. Flat ``{data_root}/*.pt`` whose stem matches ``dataset_name`` case-insensitively
+       (Linux often has ``Cora.pt`` while callers pass ``Cora`` — older code only looked for ``cora.pt``).
+    """
+    root = os.path.abspath(os.path.expanduser(data_root))
+    if not os.path.isdir(root):
+        return None
+    raw = (dataset_name or "").strip()
+    if not raw:
+        return None
+    target_cf = raw.casefold()
+
+    def p_join(*parts: str) -> str:
+        return os.path.join(root, *parts)
+
+    for sub in (raw, raw.lower(), raw.capitalize(), raw.upper()):
+        candidate = p_join(sub, "processed", "data.pt")
+        if os.path.isfile(candidate):
+            return candidate
+    try:
+        for entry in os.listdir(root):
+            subdir = p_join(entry)
+            if not os.path.isdir(subdir):
+                continue
+            if entry.casefold() != target_cf:
+                continue
+            candidate = os.path.join(subdir, "processed", "data.pt")
+            if os.path.isfile(candidate):
+                return candidate
+    except OSError:
+        pass
+
+    for stem in (raw, raw.lower(), raw.capitalize(), raw.upper()):
+        candidate = os.path.join(root, f"{stem}.pt")
+        if os.path.isfile(candidate):
+            return candidate
+    try:
+        for fn in os.listdir(root):
+            if not fn.lower().endswith(".pt"):
+                continue
+            stem, _ = os.path.splitext(fn)
+            if stem.casefold() == target_cf:
+                return os.path.join(root, fn)
+    except OSError:
+        pass
+    return None
+
+
 def load_node_data_for_rag(data_root: str, dataset_name: str) -> Optional[Data]:
     """
     Load one graph dataset for corpus build.
     Prefer data_root/{dataset_name}/processed/data.pt, else data_root/{name}.pt.
     Data must have raw_texts; label_name/label_text default from y if missing.
     """
-    name_lower = dataset_name.lower()
-    # 1) data_root/Cora/processed/data.pt
-    path1 = os.path.join(data_root, dataset_name, "processed", "data.pt")
-    if os.path.isfile(path1):
-        data = _parse_pt_to_data(_safe_torch_load(path1))
-    else:
-        # 2) data_root/cora.pt (single file)
-        path2 = os.path.join(data_root, f"{name_lower}.pt")
-        if os.path.isfile(path2):
-            data = _parse_pt_to_data(_safe_torch_load(path2))
-        else:
-            return None
+    pt_path = resolve_rag_gfm_graph_pt_path(data_root, dataset_name)
+    if pt_path is None:
+        return None
+    data = _parse_pt_to_data(_safe_torch_load(pt_path))
 
     if not hasattr(data, "raw_texts") or data.raw_texts is None or len(data.raw_texts) == 0:
         raise ValueError(
@@ -206,10 +253,10 @@ def build_rag_corpus(config: RAGCorpusBuilderConfig) -> str:
             leave=False,
         ):
             emb = encode_fn([text])[0]
-            vec = emb if isinstance(emb, np.ndarray) else np.asarray(emb)
+            vec = np.asarray(emb, dtype=np.float32).reshape(-1)
             documents.append({
                 "__id__": str(doc_id),
-                "__vector__": vec.tolist(),
+                "__vector__": vec,
                 "text": text,
                 "metadata": meta,
             })

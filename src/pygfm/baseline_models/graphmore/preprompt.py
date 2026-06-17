@@ -204,14 +204,17 @@ class EgoGraphSampler:
         :return: (features_per_hop, edge_indices_per_hop, batches_per_hop)
             Each list has length len(sample_hops); entries concatenate ego subgraphs over all nodes.
         """
+        # Keep the sampled ego-subgraphs on CPU. Concatenating all ego-graphs on GPU can
+        # easily blow up memory for medium / large graphs during GraphMoRE finetuning.
+        features_cpu = features.detach().cpu()
         G = nx.Graph()
-        G.add_nodes_from(range(features.shape[0]))
-        edge_np = edge_index.cpu().numpy()
+        G.add_nodes_from(range(features_cpu.shape[0]))
+        edge_np = edge_index.detach().cpu().numpy()
         G.add_edges_from(zip(edge_np[0].tolist(), edge_np[1].tolist()))
 
         all_features, all_edges, all_batches = [], [], []
         for hop in self.sample_hops:
-            feat, ei, batch = self._sample_ego(G, features, hop)
+            feat, ei, batch = self._sample_ego(G, features_cpu, hop)
             all_features.append(feat)
             all_edges.append(ei)
             all_batches.append(batch)
@@ -244,11 +247,10 @@ class EgoGraphSampler:
             offset += len(sub_nodes)
             batches.append(torch.full((len(sub_nodes),), node, dtype=torch.long))
 
-        device = features.device
         return (
-            torch.cat(new_features, dim=0).to(device),
-            torch.cat(new_edges, dim=1).to(device),
-            torch.cat(batches, dim=0).to(device),
+            torch.cat(new_features, dim=0),
+            torch.cat(new_edges, dim=1),
+            torch.cat(batches, dim=0),
         )
 
 
@@ -271,6 +273,7 @@ class TopologyAwareGating(nn.Module):
         out_dim: int,
         num_experts: int,
         num_hops: int = 2,
+        chunk_centers: int = 256,
     ):
         super().__init__()
         self.gcn1 = GCNConv(in_dim, hidden_dim)
@@ -278,8 +281,69 @@ class TopologyAwareGating(nn.Module):
         self.pooling = global_mean_pool
         self.classifier = nn.Linear(out_dim * num_hops, num_experts, bias=True)
         self.num_experts = num_experts
+        self.chunk_centers = chunk_centers
         self._cached_edge: Optional[torch.Tensor] = None
         self._cached_dis: Optional[torch.Tensor] = None
+
+    def _encode_scale_chunked(
+        self,
+        feat: torch.Tensor,
+        ei: torch.Tensor,
+        batch: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Encode a concatenated ego-subgraph tensor in small chunks of center nodes.
+        This avoids materializing the whole multi-resolution ego-graph collection on GPU.
+        """
+        device = next(self.parameters()).device
+        feat = feat.cpu()
+        ei = ei.cpu()
+        batch = batch.cpu()
+
+        num_centers = int(batch.max().item()) + 1 if batch.numel() > 0 else 0
+        out_dim = self.gcn2.out_channels
+        scale_out = torch.zeros(num_centers, out_dim, device=device)
+        if num_centers == 0:
+            return scale_out
+
+        # batch is monotonic because EgoGraphSampler appends ego-graphs node by node.
+        start_ptrs = []
+        end_ptrs = []
+        node_start = 0
+        for center in range(num_centers):
+            node_end = node_start
+            while node_end < batch.numel() and int(batch[node_end].item()) == center:
+                node_end += 1
+            start_ptrs.append(node_start)
+            end_ptrs.append(node_end)
+            node_start = node_end
+
+        for center_start in range(0, num_centers, self.chunk_centers):
+            center_end = min(num_centers, center_start + self.chunk_centers)
+            node_lo = start_ptrs[center_start]
+            node_hi = end_ptrs[center_end - 1]
+            feat_chunk = feat[node_lo:node_hi].to(device, non_blocking=True)
+            batch_chunk = (batch[node_lo:node_hi] - center_start).to(device, non_blocking=True)
+
+            if ei.numel() == 0:
+                ei_chunk = torch.zeros(2, 0, dtype=torch.long, device=device)
+            else:
+                edge_mask = (
+                    (ei[0] >= node_lo)
+                    & (ei[0] < node_hi)
+                    & (ei[1] >= node_lo)
+                    & (ei[1] < node_hi)
+                )
+                ei_chunk = (ei[:, edge_mask] - node_lo).to(device, non_blocking=True)
+
+            h = self.gcn1(feat_chunk, ei_chunk)
+            h = self.gcn2(h, ei_chunk)
+            pooled = self.pooling(h, batch_chunk)
+            scale_out[center_start:center_end] = pooled
+
+            del feat_chunk, batch_chunk, ei_chunk, h, pooled
+
+        return scale_out
 
     def forward(
         self,
@@ -298,10 +362,7 @@ class TopologyAwareGating(nn.Module):
         for feat, ei, batch in zip(
             subgraph_features, subgraph_edge_indices, subgraph_batches
         ):
-            h = self.gcn1(feat, ei)
-            h = self.gcn2(h, ei)
-            h = self.pooling(h, batch)
-            scale_outputs.append(h)
+            scale_outputs.append(self._encode_scale_chunked(feat, ei, batch))
 
         x = torch.cat(scale_outputs, dim=-1)
         out = F.softmax(self.classifier(x), dim=-1)

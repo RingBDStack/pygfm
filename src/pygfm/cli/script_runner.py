@@ -26,29 +26,50 @@ from typing import Any, Callable
 
 import yaml
 
+
+def _canonical_stage(stage: str) -> str:
+    """Match ``tool_download._canonical_stage_name`` (``SFT-Tiny`` → ``sft_tiny``)."""
+    return str(stage or "").strip().lower().replace("-", "_")
+
+
 SCRIPT_OVERRIDES: dict[tuple[str, str], str] = {
     ("graphgpt", "pretrain"): "graphgpt/run_with_config.py",
     ("graphgpt", "finetune"): "graphgpt/run_with_config.py",
     ("graphgpt", "finetune_graph"): "graphgpt/run_with_config.py",
+    ("graphgpt", "stage1"): "graphgpt/run_with_config.py",
+    ("graphgpt", "stage2"): "graphgpt/run_with_config.py",
+    ("graphgpt", "stage3"): "graphgpt/run_with_config.py",
     ("graphtext", "pretrain"): "graphtext/run_with_config.py",
     ("graphtext", "finetune"): "graphtext/run_sft.py",
     ("graphtext", "finetune_graph"): "graphtext/run_icl.py",
+    ("graphtext", "sft"): "graphtext/run_sft.py",
+    ("graphtext", "icl"): "graphtext/run_icl.py",
+    ("graphtext", "sft_tiny"): "graphtext/run_sft.py",
+    ("graphtext", "tiny"): "graphtext/run_sft.py",
+    ("graphtext", "smoke"): "graphtext/run_sft.py",
     ("llaga", "pretrain"): "llaga/run.py",
     ("llaga", "finetune"): "llaga/run.py",
     ("llaga", "finetune_graph"): "llaga/run.py",
+    ("llaga", "eval"): "llaga/run.py",
     ("multigprompt", "pretrain"): "multigprompt/execute.py",
     ("multigprompt", "finetune"): "multigprompt/execute.py",
     ("multigprompt", "finetune_graph"): "multigprompt/execute.py",
+    ("multigprompt", "run"): "multigprompt/execute.py",
     ("oneforall", "pretrain"): "oneforall/run.py",
     ("oneforall", "finetune"): "oneforall/run.py",
     ("oneforall", "finetune_graph"): "oneforall/run.py",
     ("sa2gfm", "detect"): "sa2gfm/detect.py",
+    ("sa2gfm", "fewshot"): "sa2gfm/generate_fewshot.py",
+    ("rag_gfm", "corpus"): "rag_gfm/build_corpus.py",
+    ("rag_gfm", "motif"): "rag_gfm/build_motif_lib.py",
+    ("graphgpt", "projector"): "graphgpt/extract_graph_projector.py",
 }
 
 ARGV_PREFIX: dict[tuple[str, str], list[str]] = {
     ("llaga", "pretrain"): ["yaml"],
     ("llaga", "finetune"): ["yaml"],
     ("llaga", "finetune_graph"): ["yaml"],
+    ("llaga", "eval"): ["yaml-eval"],
 }
 
 DEFAULT_STAGE_FILES: dict[str, str] = {
@@ -114,7 +135,7 @@ def find_scripts_root() -> Path | None:
 
 def resolve_script_path(baseline: str, stage: str) -> Path | None:
     b = baseline.strip().lower()
-    s = stage.strip().lower()
+    s = _canonical_stage(stage)
     rel = SCRIPT_OVERRIDES.get((b, s))
     if rel is None:
         fname = DEFAULT_STAGE_FILES.get(s)
@@ -129,13 +150,31 @@ def resolve_script_path(baseline: str, stage: str) -> Path | None:
 
 
 def _flatten_cfg_for_stage(cfg: dict[str, Any], stage: str) -> dict[str, Any]:
+    s = _canonical_stage(stage)
     block_key = {
         "pretrain": "pretrain",
         "finetune": "finetune",
         "finetune_graph": "finetune_graph",
+        "sft": "sft",
+        "icl": "icl",
+        "sft_tiny": "sft_tiny",
+        "tiny": "tiny",
+        "smoke": "smoke",
+        "hf_download": "hf_download",
+        "download_assets": "download_assets",
+        "stage1": "stage1",
+        "stage2": "stage2",
+        "stage3": "stage3",
         "downstream": "downstream",
         "detect": "detect",
-    }.get(stage, "pretrain")
+        "fewshot": "fewshot",
+        "corpus": "corpus",
+        "motif": "motif",
+        "eval": "eval",
+        "projector": "projector",
+        "run": "run",
+        "domain_il": "domain_il",
+    }.get(s, "pretrain")
     block = cfg.get(block_key)
     if not isinstance(block, dict):
         block = {}
@@ -146,8 +185,26 @@ def _flatten_cfg_for_stage(cfg: dict[str, Any], stage: str) -> dict[str, Any]:
         "pretrain",
         "finetune",
         "finetune_graph",
+        "sft",
+        "icl",
+        "sft_tiny",
+        "tiny",
+        "smoke",
+        "hf_download",
+        "download_assets",
+        "stage1",
+        "stage2",
+        "stage3",
         "downstream",
         "detect",
+        "fewshot",
+        "corpus",
+        "motif",
+        "download",
+        "eval",
+        "projector",
+        "run",
+        "domain_il",
     }
     top = {k: v for k, v in cfg.items() if k not in skip}
     merged: dict[str, Any] = {**block, **top}
@@ -170,24 +227,93 @@ def _yaml_dump(data: dict[str, Any]) -> str:
     return yaml.safe_dump(conv(data), sort_keys=False, allow_unicode=True)
 
 
+def _sa2gfm_apply_data_root_from_flat(flat: dict[str, Any]) -> None:
+    """Strip ``data_root`` / ``sa2gfm_data_root`` into ``SA2GFM_DATA_ROOT`` and refresh package paths."""
+    for k in ("data_root", "sa2gfm_data_root"):
+        v = flat.pop(k, None)
+        if v is not None and str(v).strip():
+            os.environ["SA2GFM_DATA_ROOT"] = str(Path(str(v)).expanduser().resolve())
+    try:
+        from pygfm.baseline_models.sa2gfm.paths import reinit_paths
+
+        reinit_paths()
+    except Exception:
+        pass
+
+
 def _run_sa2gfm_detect(path: Path, cfg: dict[str, Any]) -> None:
-    """``detect.py`` uses ``_main()`` only under ``if __name__``."""
+    """Run ``01_detect_communities.py`` with a temp ``-c`` YAML (``detect.py`` does not forward argv)."""
+    import importlib
+
     script_dir = str(path.parent)
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
-    import importlib
 
     setup = importlib.import_module("_setup_repo")
     setup.setup_repo()
-    spec = importlib.util.spec_from_file_location("sa2gfm_detect", path)
-    if spec is None or spec.loader is None:
-        raise ImportError(path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    if hasattr(mod, "_main"):
-        mod._main()
-    else:
-        raise RuntimeError(f"No _main in {path}")
+
+    flat = _flatten_cfg_for_stage(cfg, "detect")
+    _sa2gfm_apply_data_root_from_flat(flat)
+
+    tmp_path: str | None = None
+    old_argv = sys.argv[:]
+    old_cwd = os.getcwd()
+    repo_root = _execution_cwd_for_script(path, old_cwd)
+    try:
+        fd, tmp_path = tempfile.mkstemp(suffix=".yaml", prefix="pygfm_sa2gfm_detect_")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(_yaml_dump(flat))
+
+        import pygfm
+
+        pipe = (
+            Path(pygfm.__file__).resolve().parent
+            / "baseline_models"
+            / "sa2gfm"
+            / "community_detection"
+            / "pipeline"
+            / "01_detect_communities.py"
+        )
+        if not pipe.is_file():
+            raise FileNotFoundError(f"SA2GFM detect pipeline missing: {pipe}")
+
+        sys.argv = [str(pipe), "-c", tmp_path]
+        os.chdir(repo_root)
+        spec = importlib.util.spec_from_file_location("sa2gfm_01_detect_communities", pipe)
+        if spec is None or spec.loader is None:
+            raise ImportError(pipe)
+        mod = importlib.util.module_from_spec(spec)
+        assert spec.loader
+        spec.loader.exec_module(mod)
+        mod.main()
+    finally:
+        sys.argv = old_argv
+        try:
+            os.chdir(old_cwd)
+        except OSError:
+            pass
+        if tmp_path and os.path.isfile(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+
+def _execution_cwd_for_script(script_path: Path, cwd_before: str) -> Path:
+    """Where to ``chdir`` before exec'ing a driver script.
+
+    Git checkout: ``.../repo/scripts/<baseline>/foo.py`` → repo root (``parents[2]``).
+
+    Pip wheel: script lives under ``/tmp/pygfm_bundled_scripts/.../scripts/...`` — that tree has
+    no ``datasets/``; YAML paths like ``./datasets/mdgpt`` must stay relative to the user's cwd
+    (e.g. ``~/gfm``), not the temp extract root.
+    """
+    from pygfm.public.repo_paths import driver_script_repo_root
+
+    resolved = script_path.resolve()
+    if "pygfm_bundled_scripts" in resolved.parts:
+        return Path(cwd_before).resolve()
+    return driver_script_repo_root(script_path)
 
 
 def run_script_main(baseline: str, stage: str, cfg: dict[str, Any]) -> None:
@@ -204,16 +330,18 @@ def run_script_main(baseline: str, stage: str, cfg: dict[str, Any]) -> None:
         return
 
     flat = _flatten_cfg_for_stage(cfg, stage)
+    if baseline.lower() == "sa2gfm":
+        _sa2gfm_apply_data_root_from_flat(flat)
     tmp_path: str | None = None
     old_argv = sys.argv[:]
     old_cwd = os.getcwd()
-    repo_root = path.resolve().parents[2]
+    repo_root = _execution_cwd_for_script(path, old_cwd)
     try:
         fd, tmp_path = tempfile.mkstemp(suffix=".yaml", prefix=f"pygfm_{baseline}_{stage}_")
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(_yaml_dump(flat))
 
-        prefix = ARGV_PREFIX.get((baseline.lower(), stage.lower()), [])
+        prefix = ARGV_PREFIX.get((baseline.lower(), _canonical_stage(stage)), [])
         sys.argv = [str(path.resolve())] + prefix + ["-c", tmp_path]
         os.chdir(repo_root)
 

@@ -16,10 +16,11 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
 import yaml
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = driver_script_repo_root(__file__)
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
@@ -67,9 +68,21 @@ def main() -> None:
         return
 
     script_name = "run_sft.py" if entry in ("sft", "run_sft", "train") else "run_icl.py"
-    target = _ROOT / "scripts" / "graphtext" / script_name
+    # Same directory as this driver (git checkout *or* wheel bundle under ``.../scripts/graphtext/``).
+    # Do not rely only on ``_ROOT / scripts/graphtext``: bundled installs set ``_ROOT`` to ``cwd()``,
+    # where ``.../gfm/scripts/graphtext/run_sft.py`` often does not exist.
+    here = Path(__file__).resolve().parent
+    target = here / script_name
     if not target.is_file():
-        raise FileNotFoundError(target)
+        legacy = _ROOT / "scripts" / "graphtext" / script_name
+        if legacy.is_file():
+            target = legacy
+        else:
+            raise FileNotFoundError(
+                f"{script_name} not found next to {here} nor at {legacy}. "
+                "Use a checkout with ``scripts/graphtext``, set ``PYGFM_REPO_ROOT`` to that repo, "
+                "or reinstall / rebuild ``_scripts_bundle.zip`` so graphtext drivers sit together."
+            )
     cmd = [sys.executable, str(target), *merged]
     print(">>", " ".join(cmd))
     raise SystemExit(subprocess.call(cmd, cwd=_ROOT))

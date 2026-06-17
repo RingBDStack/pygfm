@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: python-gfm
-Version: 0.1.7
+Version: 0.1.18
 Summary: An AI copilot for graph data and models (Under active development).
 Author-email: BUAA SKLCCSE <your.email@example.com>
 License: Apache-2.0
@@ -10,155 +10,264 @@ Requires-Dist: numpy>=1.20
 Requires-Dist: pyyaml>=6
 Provides-Extra: torch
 Requires-Dist: torch==2.8.0; extra == "torch"
-Requires-Dist: torch-geometric>=2.3.0; extra == "torch"
+Requires-Dist: lightning<3,>=2.2.0; extra == "torch"
+Requires-Dist: torchmetrics>=1.3.0; extra == "torch"
+Requires-Dist: torch-geometric==2.7.0; extra == "torch"
 Requires-Dist: torch-scatter==2.1.2; extra == "torch"
 Requires-Dist: torch-sparse==0.6.18; extra == "torch"
 Requires-Dist: torch-cluster==1.6.3; extra == "torch"
 Requires-Dist: torch-spline-conv==1.2.2; extra == "torch"
+Requires-Dist: ogb==1.3.6; extra == "torch"
+Requires-Dist: geoopt==0.5.1; extra == "torch"
+Requires-Dist: deeprobust>=0.2.4; extra == "torch"
 Requires-Dist: scipy>=1.9.0; extra == "torch"
-Requires-Dist: transformers>=4.36.0; extra == "torch"
 Requires-Dist: joblib>=1.3.0; extra == "torch"
 Requires-Dist: scikit-learn>=1.3.0; extra == "torch"
 Requires-Dist: ftfy>=6.1.0; extra == "torch"
 Requires-Dist: regex>=2023.0.0; extra == "torch"
 Requires-Dist: accelerate>=0.26.0; extra == "torch"
-Requires-Dist: fschat>=0.2.36; extra == "torch"
+Provides-Extra: light
+Requires-Dist: numpy==2.3.2; extra == "light"
+Requires-Dist: scipy==1.17.1; extra == "light"
+Requires-Dist: pandas==3.0.2; extra == "light"
+Requires-Dist: scikit-learn==1.8.0; extra == "light"
+Requires-Dist: joblib==1.5.3; extra == "light"
+Requires-Dist: networkx==3.5; extra == "light"
+Requires-Dist: torch-geometric==2.7.0; extra == "light"
+Requires-Dist: numba==0.65.0; extra == "light"
+Requires-Dist: matplotlib==3.10.5; extra == "light"
+Requires-Dist: PyYAML==6.0.2; extra == "light"
+Requires-Dist: hydra-core==1.3.2; extra == "light"
+Requires-Dist: omegaconf==2.3.0; extra == "light"
+Requires-Dist: easydict==1.13; extra == "light"
+Requires-Dist: pytz>=2024.1; extra == "light"
+Requires-Dist: bidict>=0.22.0; extra == "light"
+Requires-Dist: tqdm==4.67.3; extra == "light"
+Requires-Dist: requests==2.33.1; extra == "light"
+Requires-Dist: httpx==0.28.1; extra == "light"
+Requires-Dist: pydantic==2.13.0; extra == "light"
+Requires-Dist: psutil==7.0.0; extra == "light"
+Requires-Dist: regex==2026.4.4; extra == "light"
+Requires-Dist: ftfy==6.3.1; extra == "light"
+Requires-Dist: huggingface-hub==1.10.2; extra == "light"
+Requires-Dist: transformers>=4.36.0; extra == "light"
+Requires-Dist: openai==2.31.0; extra == "light"
+Requires-Dist: anthropic>=0.40.0; extra == "light"
+Requires-Dist: fastapi>=0.115.0; extra == "light"
+Requires-Dist: uvicorn[standard]>=0.32.0; extra == "light"
+Requires-Dist: shortuuid>=1.0.0; extra == "light"
+Requires-Dist: nano-vectordb==0.0.4.3; extra == "light"
+Requires-Dist: gdown==5.2.0; extra == "light"
+Requires-Dist: einops==0.8.2; extra == "light"
+Requires-Dist: gradio>=5.0.0; extra == "light"
+Requires-Dist: wandb>=0.19.0; extra == "light"
+Requires-Dist: swanlab<0.8,>=0.7.11; extra == "light"
+Provides-Extra: llm
+Requires-Dist: transformers==5.5.4; extra == "llm"
+Requires-Dist: tokenizers==0.22.2; extra == "llm"
+Requires-Dist: safetensors==0.7.0; extra == "llm"
+Requires-Dist: hydra-core==1.3.2; extra == "llm"
+Requires-Dist: omegaconf==2.3.0; extra == "llm"
+Requires-Dist: easydict==1.13; extra == "llm"
+Requires-Dist: pytz>=2024.1; extra == "llm"
+Requires-Dist: bidict>=0.22.0; extra == "llm"
+Requires-Dist: accelerate==1.13.0; extra == "llm"
+Requires-Dist: bitsandbytes==0.49.2; extra == "llm"
+Requires-Dist: peft==0.19.0; extra == "llm"
+Requires-Dist: datasets==4.8.4; extra == "llm"
+Requires-Dist: openai==2.31.0; extra == "llm"
+Requires-Dist: nano-vectordb==0.0.4.3; extra == "llm"
+Requires-Dist: sentence-transformers==5.4.1; extra == "llm"
+Requires-Dist: fschat>=0.2.36; extra == "llm"
+Requires-Dist: ray[default]>=2.40.0; extra == "llm"
+Requires-Dist: google-cloud-aiplatform>=1.38.0; extra == "llm"
+Requires-Dist: deepspeed==0.18.9; extra == "llm"
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: ruff; extra == "dev"
 
-# pygfm
+<div align="center">
+<img src="https://raw.githubusercontent.com/RingBDStack/pygfm/main/assets/LOGO.png" style="width:30%; display:block; margin:0 auto;" alt="LOGO">
 
-[PyPI version](https://pypi.org/project/pygfm/)
-[Python](https://pypi.org/project/pygfm/)
-[License](LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/python-gfm?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/python-gfm/)
+[![Python](https://img.shields.io/pypi/pyversions/python-gfm?logo=python&logoColor=white)](https://pypi.org/project/python-gfm/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/python-gfm?color=orange)](https://pypi.org/project/python-gfm/)
 
-A unified Python toolkit for **Graph Foundation Models (GFM)** research, integrating 19 baseline methods under a single package with shared utilities, standardized interfaces, and reproducible experiment pipelines.
+[Installation](#installation) · [Supported Baselines](#supported-baselines) · [Configs (HF download)](#reproducing-baselines-config-download) · [Experiment workflow](#experiment-workflow) · [Documentation](#baseline-documentation)
 
-Developed by **Beihang University, School of Computer Science and Engineering, ACT Lab, MAGIC GROUP**.
+</div>
+
+---
+
+`pygfm` is a unified Python toolkit for **Graph Foundation Model (GFM)** research. It integrates **17 state-of-the-art baseline methods** under a single, pip-installable package with shared utilities, standardized interfaces, and fully reproducible experiment pipelines.
+
+Developed by **Beihang University · School of Computer Science and Engineering · ACT Lab · MAGIC GROUP**.
+
+## Framework Overview
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/RingBDStack/pygfm/main/assets/framework.png" alt="PyGFM Framework Overview" width="90%">
+</div>
+
+PyGFM is organized into four stacked layers — **Graph Data Abstraction → Alignment & Fusion Bridge → Representation Backbones → Task Heads & Orchestration** — with a unified CLI, model recipes, and an auto-experiment tracker sitting on top.
+
+## Highlights
+
+- **One package, 17 baselines** — prompt-based GFMs, structure-aware models, LLM-integrated approaches, and retrieval-augmented methods all available via a single `pip install`.
+- **Reproducible pipelines** — every baseline ships with YAML-driven experiment configs, training scripts, and evaluation helpers.
+- **Shared backbone library** — common GNN encoders, loss functions, and data utilities are factored out and reused across all baselines, reducing code duplication.
+- **CLI-first design** — launch pre-training, fine-tuning, and evaluation jobs directly from the command line without writing any boilerplate.
+- **LLM-ready** — first-class support for LLM-integrated GFMs (GraphGPT, GraphText, LLaGA, OneForAll) with HuggingFace-compatible YAML configs.
 
 ## Installation
 
-```bash
-pip install python-gfm
-```
+### CUDA (recommended)
 
-Install with optional dependencies:
+**Default (fresh env): `torch` + `light` together** — PyTorch wheel index + PyPI + PyG find-links:
 
 ```bash
-pip install python-gfm[torch]   # PyTorch + PyG
-pip install python-gfm[dev]     # pytest + ruff
+pip install "python-gfm[torch,light]" --index-url https://download.pytorch.org/whl/cu128 --extra-index-url https://pypi.org/simple -f https://data.pyg.org/whl/torch-2.8.0+cu128.html
 ```
 
-For development (full checkout with experiment scripts):
+**If CUDA PyTorch / PyG is already in the env** — install **`[light]`** from PyPI only:
 
 ```bash
-git clone <repo-url> && cd pythongfm
-pip install -e ".[torch,dev]"
+pip install "python-gfm[light]"
 ```
 
-## Quick Start
+**LLM-integrated GFMs** — after **`[torch]`** and **`[light]`** are in place:
 
-```python
-import pygfm
-
-print(pygfm.__version__)
+```bash
+pip install "python-gfm[llm]"
 ```
 
-## Package Structure
+> **CPU:** `--index-url https://download.pytorch.org/whl/cpu` and `-f https://data.pyg.org/whl/torch-2.8.0+cpu.html`.
+
+### Extras overview
+
+| Extra | Contents (short) |
+|-------|------------------|
+| **`torch`** | PyTorch Geometric stack, graph libs, sklearn helpers |
+| **`light`** | NumPy/Pandas stack, Transformers, Hydra, APIs, Gradio, W&B, SwanLab |
+| **`llm`** | PEFT, bitsandbytes, datasets, fschat, Ray, Vertex, DeepSpeed |
+
+### Optional `dev` extra
+
+`pip install "python-gfm[dev]"` adds `pytest` and `ruff` for testing and linting.
+
+## Package layout (installed wheel)
 
 ```
 pygfm/
-├── baseline_models/   # 19 GFM baseline implementations
+├── baseline_models/   # GFM baseline implementations
 ├── public/            # Shared utilities, losses, backbone encoders
-│   ├── backbone_models/
-│   ├── utils/
-│   ├── cli/
-│   └── model_bases.py
-├── private/           # Internal modules (core encoders, data generation)
-└── cli/               # Console entrypoints
+├── private/           # Core encoders and internal helpers
+└── cli/               # Console entry points
 ```
 
 ## Supported Baselines
 
+| Category | Methods |
+|---|---|
+| **Prompt-based GFM** | MDGPT, SAMGPT, MDGFM, GraphPrompt, HGPrompt, MultiGPrompt, GCoT |
+| **Structure-aware GFM** | SA2GFM, Bridge, GraphKeeper, GraphMore, Graver |
+| **LLM-integrated GFM** | GraphGPT, GraphText, LLaGA, OneForAll |
+| **Retrieval-augmented GFM** | RAG-GFM |
 
-| Category            | Baselines                                                       |
-| ------------------- | --------------------------------------------------------------- |
-| Prompt-based GFM    | MDGPT, SAMGPT, MDGFM, GraphPrompt, HGPrompt, MultiGPrompt, GCoT |
-| Structure-aware     | SA2GFM, Bridge, GraphKeeper, GraphMore, Graver, BIM-GFM         |
-| LLM-integrated      | GraphGPT, GraphText, LLaGA, OneForAll                           |
-| Retrieval-augmented | RAG-GFM                                                         |
-| Classic             | Classic GNN                                                     |
+## Reproducing baselines (config download)
 
-
-## Running Experiments
-
-Each baseline has its own experiment scripts under `scripts/<baseline>/`. Run from the repository root:
+Published **YAML configs** and toolbox assets live in a Hugging Face dataset. With `python-gfm` installed (stdlib only; no extra deps for this step), run:
 
 ```bash
-# Pre-training
-python scripts/mdgpt/pretrain.py
-
-# Downstream fine-tuning
-python scripts/sa2gfm/downstream.py
-
-# Full pipeline with config
-python scripts/gcot/pretrain.py
-python scripts/gcot/finetune.py
-python scripts/gcot/finetune_graph.py
+python -m pygfm.cli.download --repo aboutime233/gtb --path gfmtoolbox_docs
 ```
+
+Outputs go under `--outdir` (default: `downloads/`). Command-line options for the downloader (repo, revision, path, output directory, etc.) are described in the **official documentation** on the [project homepage](https://github.com/RingBDStack/pygfm/).
+
+## Experiment workflow
+
+Typical end-to-end flow (YAML names and paths are **examples** — point `-c` at the configs you downloaded or arranged for your baseline):
+
+```bash
+# Download config files, or manually fetch them from the Hugging Face dataset:
+# https://huggingface.co/datasets/aboutime233/gtb
+python -m pygfm.cli.download
+
+# Configure datasets and other settings following each baseline’s official documentation on the project site.
+
+# Step 1: Generate few-shot downstream splits
+python -m pygfm.cli.run_yaml -c configs/mdgpt/01_split_cora_1shot.yaml
+# -> downstream_data/mdgpt/splits.pt
+
+# Step 2: Leave-one-domain pre-training
+python -m pygfm.cli.run_yaml -c configs/mdgpt/02_pretrain_cora.yaml
+# -> ckpts/mdgpt/preprompt.pth
+
+# Step 3: Downstream fine-tuning & evaluation
+python -m pygfm.cli.run_yaml -c configs/mdgpt/03_finetune_cora_1shot.yaml
+# -> Cora 1-shot node classification accuracy (and other logged outputs)
+```
+
+The same YAML driver is available as **`pygfm`** / **`gfm`** (see [Console Commands](#console-commands)): `pygfm -c configs/mdgpt/02_pretrain_cora.yaml`.
 
 ## Console Commands
 
-After installation, the following CLI commands are available:
-
-
-| Command                 | Description                                 |
-| ----------------------- | ------------------------------------------- |
-| `gfm-sa2gfm-pretrain`   | SA2GFM contrastive pre-training (`-c` YAML) |
-| `gfm-sa2gfm-downstream` | SA2GFM MoE downstream fine-tuning           |
-
-
-## Baseline Documentation
-
-Detailed instructions for each baseline:
-
-
-| Baseline     | Docs                                                               |
-| ------------ | ------------------------------------------------------------------ |
-| MDGPT        | `[scripts/mdgpt/README.md](scripts/mdgpt/README.md)`               |
-| SA2GFM       | `[scripts/sa2gfm/README.md](scripts/sa2gfm/README.md)`             |
-| MultiGPrompt | `[scripts/multigprompt/README.md](scripts/multigprompt/README.md)` |
-| LLaGA        | `[scripts/llaga/README.md](scripts/llaga/README.md)`               |
-| GraphText    | `[scripts/graphtext/README.md](scripts/graphtext/README.md)`       |
-| GraphGPT     | `[scripts/graphgpt/README.md](scripts/graphgpt/README.md)`         |
-| OneForAll    | `[scripts/oneforall/README.md](scripts/oneforall/README.md)`       |
-| MDGFM        | `[scripts/mdgfm/README.md](scripts/mdgfm/README.md)`               |
-| SAMGPT       | `[scripts/samgpt/README.md](scripts/samgpt/README.md)`             |
-| GCoT         | `[scripts/gcot/README.md](scripts/gcot/README.md)`                 |
-| HGPrompt     | `[scripts/hgprompt/README.md](scripts/hgprompt/README.md)`         |
-| GraphPrompt  | `[scripts/graphprompt/README.md](scripts/graphprompt/README.md)`   |
-| Graver       | `[scripts/graver/README.md](scripts/graver/README.md)`             |
-| GraphMore    | `[scripts/graphmore/README.md](scripts/graphmore/README.md)`       |
-| Bridge       | `[scripts/bridge/README.md](scripts/bridge/README.md)`             |
-| GraphKeeper  | `[scripts/graphkeeper/README.md](scripts/graphkeeper/README.md)`   |
-| RAG-GFM      | `[scripts/rag_gfm/README.md](scripts/rag_gfm/README.md)`           |
-
+| Command | Description |
+|---|---|
+| `python -m pygfm.cli.download` | Fetch baseline / toolbox YAML and assets from Hugging Face ([above](#reproducing-baselines-config-download)) |
+| `python -m pygfm.cli.run_yaml` | Same as **`pygfm`** / **`gfm`**: run a stage from YAML (`-c /path/to/config.yaml`) — see [Experiment workflow](#experiment-workflow) |
 
 ## Configuration
 
-Experiment configs are YAML files located at `scripts/<baseline>/configs/`. Pass them via `-c` flag or as positional arguments depending on the baseline.
+After downloading configs, drive stages with **`pygfm`** / **`gfm`** or **`python -m pygfm.cli.run_yaml`** and **`-c`** (see [Experiment workflow](#experiment-workflow)). For each baseline, read the **official documentation** on the [project homepage](https://github.com/RingBDStack/pygfm/) (hyperparameters, data roots, optional API keys, etc.); do not commit secrets.
 
-**Important:** Do **not** commit API keys. For baselines that require LLM API access (e.g., GraphText), copy the example config and fill in your keys locally:
+## Baseline Documentation
 
-```bash
-cp scripts/graphtext/config/user/env.yaml.example scripts/graphtext/config/user/env.yaml
-```
+Each baseline’s setup, data layout, and evaluation notes are published in the **official documentation** on the [project homepage](https://github.com/RingBDStack/pygfm/). Index of per-method guides:
+
+| Baseline | Docs |
+|---|---|
+| MDGPT | [MDGPT README](https://github.com/RingBDStack/pygfm/blob/main/scripts/mdgpt/README.md) |
+| SA2GFM | [SA2GFM README](https://github.com/RingBDStack/pygfm/blob/main/scripts/sa2gfm/README.md) |
+| SAMGPT | [SAMGPT README](https://github.com/RingBDStack/pygfm/blob/main/scripts/samgpt/README.md) |
+| MDGFM | [MDGFM README](https://github.com/RingBDStack/pygfm/blob/main/scripts/mdgfm/README.md) |
+| GraphPrompt | [GraphPrompt README](https://github.com/RingBDStack/pygfm/blob/main/scripts/graphprompt/README.md) |
+| HGPrompt | [HGPrompt README](https://github.com/RingBDStack/pygfm/blob/main/scripts/hgprompt/README.md) |
+| MultiGPrompt | [MultiGPrompt README](https://github.com/RingBDStack/pygfm/blob/main/scripts/multigprompt/README.md) |
+| GCoT | [GCoT README](https://github.com/RingBDStack/pygfm/blob/main/scripts/gcot/README.md) |
+| Graver | [Graver README](https://github.com/RingBDStack/pygfm/blob/main/scripts/graver/README.md) |
+| GraphMore | [GraphMore README](https://github.com/RingBDStack/pygfm/blob/main/scripts/graphmore/README.md) |
+| Bridge | [Bridge README](https://github.com/RingBDStack/pygfm/blob/main/scripts/bridge/README.md) |
+| GraphKeeper | [GraphKeeper README](https://github.com/RingBDStack/pygfm/blob/main/scripts/graphkeeper/README.md) |
+| GraphGPT | [GraphGPT README](https://github.com/RingBDStack/pygfm/blob/main/scripts/graphgpt/README.md) |
+| GraphText | [GraphText README](https://github.com/RingBDStack/pygfm/blob/main/scripts/graphtext/README.md) |
+| LLaGA | [LLaGA README](https://github.com/RingBDStack/pygfm/blob/main/scripts/llaga/README.md) |
+| OneForAll | [OneForAll README](https://github.com/RingBDStack/pygfm/blob/main/scripts/oneforall/README.md) |
+| RAG-GFM | [RAG-GFM README](https://github.com/RingBDStack/pygfm/blob/main/scripts/rag_gfm/README.md) |
+
+## Requirements
+
+| Dependency | Version |
+|---|---|
+| Python | ≥ 3.12 |
+| PyTorch | 2.8.0 (CUDA 12.8 recommended) |
+| PyTorch Geometric | ≥ 2.3.0 |
+| Transformers | ≥ 4.36.0 |
+| Accelerate | ≥ 0.26.0 |
+
+See [`pyproject.toml`](https://github.com/RingBDStack/pygfm/blob/main/pyproject.toml) on GitHub for the full dependency specification.
 
 ## License
 
-This project is licensed under the [Apache License 2.0](LICENSE).
+This project is licensed under the **[Apache License 2.0](LICENSE)**.
 
 ## Team
 
-**MAGIC GROUP** -- Beihang University, School of Computer Science and Engineering, ACT Lab.
+**MAGIC GROUP** — Beihang University, School of Computer Science and Engineering, ACT Lab.
+
+---
+
+<div align="center">
+<sub>If you find this toolkit useful in your research, please consider <a href="https://github.com/RingBDStack/pygfm/">starring the repository</a> ⭐</sub>
+</div>

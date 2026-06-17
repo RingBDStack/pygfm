@@ -15,13 +15,26 @@ from __future__ import annotations
 
 from typing import List
 
+import cv2
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .graph import as_sparse_adj, inject_graphs_return_sparse, inject_graphs_to_target
 from .preprompt import DisenGCN
 from ...public.utils import compute_prototypes
+
+
+def averageemb(
+    labels: torch.Tensor,
+    rawret: torch.Tensor,
+    nb_class: int,
+) -> torch.Tensor:
+    """Per-class mean embeddings via scatter (GRAVER ``averageemb``)."""
+    import torch_scatter
+
+    return torch_scatter.scatter(src=rawret, index=labels, dim=0, reduce="mean")
 
 
 # ---------------------------------------------------------------------------
@@ -37,12 +50,18 @@ class MoECoERouter(nn.Module):
     - Final graphon = MoE weights × per-source CoE-merged graphons
     """
 
-    def __init__(self, num_tokens: int, num_labels_list: List[int]):
+    def __init__(self, num_tokens: int, num_labels_list: List[int], *, defer_init: bool = False):
         super().__init__()
-        self.moe_weights = nn.Parameter(torch.randn(num_tokens))
-        self.coe_weights = nn.ParameterList([
-            nn.Parameter(torch.randn(nl)) for nl in num_labels_list
-        ])
+        if defer_init:
+            self.moe_weights = nn.Parameter(torch.empty(num_tokens))
+            self.coe_weights = nn.ParameterList([
+                nn.Parameter(torch.empty(nl)) for nl in num_labels_list
+            ])
+        else:
+            self.moe_weights = nn.Parameter(torch.randn(num_tokens))
+            self.coe_weights = nn.ParameterList([
+                nn.Parameter(torch.randn(nl)) for nl in num_labels_list
+            ])
 
     def forward(
         self,
@@ -86,20 +105,26 @@ class GraphonGenerator:
         self.num_nodes = num_nodes
         self.token = token
 
-    def generate(self) -> tuple[torch.Tensor, torch.Tensor]:
+    def generate(self, rng: np.random.Generator | None = None) -> tuple[torch.Tensor, torch.Tensor]:
         """
         :return: (x [num_nodes, dim], edge_index [2, E])
         """
-        g = self.graphon.detach().float()
-        if g.dim() == 2:
-            g = g.unsqueeze(0).unsqueeze(0)
-        resized = F.interpolate(
-            g, size=(self.num_nodes, self.num_nodes),
-            mode="bilinear", align_corners=False,
-        ).squeeze()
+        if isinstance(self.graphon, torch.Tensor):
+            graphon_np = self.graphon.detach().cpu().numpy()
+        else:
+            graphon_np = np.asarray(self.graphon, dtype=np.float32)
 
-        prob_np = resized.clamp(0, 1).cpu().numpy()
-        sampled = (np.random.rand(self.num_nodes, self.num_nodes) < prob_np).astype(np.int32)
+        graphon_resized = cv2.resize(
+            graphon_np,
+            dsize=(self.num_nodes, self.num_nodes),
+            interpolation=cv2.INTER_LINEAR,
+        )
+
+        if rng is None:
+            rand_matrix = np.random.rand(self.num_nodes, self.num_nodes)
+        else:
+            rand_matrix = rng.random((self.num_nodes, self.num_nodes))
+        sampled = (rand_matrix < graphon_resized).astype(np.int32)
         sampled = np.triu(sampled, k=1)
         sampled = sampled + sampled.T
         rows, cols = np.nonzero(sampled)
@@ -107,56 +132,6 @@ class GraphonGenerator:
         edge_index = torch.from_numpy(ei_np).to(self.token.device)
         x = self.token.detach().expand(self.num_nodes, -1).clone()
         return x, edge_index
-
-
-# ---------------------------------------------------------------------------
-# Graph injection (attach sampled graphon subgraphs to the target graph)
-# ---------------------------------------------------------------------------
-
-def inject_graphs_to_target(
-    gen_x_list: List[torch.Tensor],
-    gen_ei_list: List[torch.Tensor],
-    target_x: torch.Tensor,
-    target_edge_index: torch.Tensor,
-    idx: List[int],
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Inject len(idx) generated graphs into the target at the listed nodes.
-    In each generated graph, the highest-degree node merges with the target node; others append.
-
-    :return: (expanded_x [N', dim], expanded_edge_index [2, E'])
-    """
-    device = target_x.device
-    new_x = target_x.clone()
-    N = target_x.size(0)
-    rows = target_edge_index[0].tolist()
-    cols = target_edge_index[1].tolist()
-
-    for (gx, gei), tgt_node in zip(zip(gen_x_list, gen_ei_list), idx):
-        if gei.numel() == 0:
-            continue
-        gx, gei = gx.to(device), gei.to(device)
-        num_g = gx.size(0)
-        deg = torch.zeros(num_g, device=device)
-        deg.scatter_add_(0, gei[0], torch.ones(gei.size(1), device=device))
-        hub = deg.argmax().item()
-
-        keep = [j for j in range(num_g) if j != hub]
-        if not keep:
-            continue
-        old2new = {old: N + i for i, old in enumerate(keep)}
-        new_x = torch.cat([new_x, gx[keep]], dim=0)
-
-        for s, t in gei.t().tolist():
-            s_new = tgt_node if s == hub else old2new.get(s)
-            t_new = tgt_node if t == hub else old2new.get(t)
-            if s_new is not None and t_new is not None:
-                rows.extend([s_new, t_new])
-                cols.extend([t_new, s_new])
-        N += len(keep)
-
-    new_ei = torch.tensor([rows, cols], dtype=torch.long, device=device)
-    return new_x, new_ei
 
 
 # ---------------------------------------------------------------------------
@@ -214,20 +189,116 @@ class GRAVERDownPromptModel(nn.Module):
         self.combine_weights = nn.Parameter(torch.empty(1, 2))
         nn.init.xavier_uniform_(self.combine_weights)
 
-        self.register_buffer("prototypes", torch.zeros(num_classes, self.disen_gcn.output_dim))
+        out_dim = self.disen_gcn.output_dim
+        self.register_buffer(
+            "prototypes",
+            torch.zeros(num_classes, out_dim, device=self.device),
+        )
+        self.ave = torch.empty(num_classes, out_dim, device=self.device)
         self.to(self.device)
 
     # ---- Weight loading ----
 
     def load_preprompt_checkpoint(self, ckpt: dict, strict: bool = False) -> None:
         """Load shared weights from PrePrompt ckpt (masks_logits, disen_gcn.*)."""
-        self.load_state_dict(ckpt["model"], strict=strict)
+        from .io import preprompt_state_dict_from_checkpoint
+
+        self.load_state_dict(preprompt_state_dict_from_checkpoint(ckpt), strict=strict)
 
     def freeze_pretrain_parts(self) -> None:
         """Freeze pretrained parts: masks_logits + DisenGCN."""
         self.masks_logits.requires_grad = False
         for p in self.disen_gcn.parameters():
             p.requires_grad = False
+
+    def init_downprompt_trainable(self) -> None:
+        """
+        Re-init downstream trainable weights on CPU before copying to device.
+
+        GRAVER DownPrompt initializes trainable weights on CPU then copies to device;
+        CUDA xavier/randn draws a different sequence, so cross-dataset repro mirrors CPU init.
+        """
+        hid = self.disen_gcn.output_dim
+
+        token = torch.empty(1, self.num_sources)
+        nn.init.xavier_uniform_(token)
+        self.token_weights.data.copy_(token.to(self.token_weights.device))
+
+        self.moe_coe_router.moe_weights.data.copy_(
+            torch.randn(self.num_sources).to(self.moe_coe_router.moe_weights.device)
+        )
+        for i, coe in enumerate(self.moe_coe_router.coe_weights):
+            coe.data.copy_(torch.randn(coe.numel()).to(coe.device))
+
+        opened = torch.empty(1, self.input_dim)
+        nn.init.xavier_uniform_(opened)
+        self.open_prompt_weight.data.copy_(opened.to(self.open_prompt_weight.device))
+
+        combined = torch.empty(1, 2)
+        nn.init.xavier_uniform_(combined)
+        self.combine_weights.data.copy_(combined.to(self.combine_weights.device))
+
+        self.ave = torch.empty(self.num_classes, hid, device=self.device)
+
+    @classmethod
+    def for_finetune(
+        cls,
+        ckpt: dict,
+        num_labels_list: List[int],
+        num_classes: int,
+        *,
+        seed: int = 39,
+        gen_num_nodes: int = 10,
+        combine_type: str = "mul",
+        device: torch.device | None = None,
+    ) -> "GRAVERDownPromptModel":
+        """
+        Build a finetune model with GRAVER downprompt RNG (CPU init after seed).
+
+        Frozen backbone is loaded from ``ckpt``; trainable weights are initialized only
+        after ``set_seed_deterministic(seed)`` without consuming the seed beforehand.
+        """
+        from .io import set_seed_deterministic
+
+        dev = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        input_dim = int(ckpt["input_dim"])
+        hidden_dim = int(ckpt["hidden_dim"])
+        num_sources = int(ckpt["num_sources"])
+
+        model = cls.__new__(cls)
+        nn.Module.__init__(model)
+        model.input_dim = input_dim
+        model.num_sources = num_sources
+        model.num_classes = num_classes
+        model.gen_num_nodes = gen_num_nodes
+        model.combine_type = combine_type
+        model.device = dev
+
+        model.masks_logits = nn.Parameter(torch.zeros(num_sources, input_dim))
+        model.disen_gcn = DisenGCN(
+            input_dim,
+            hidden_dim,
+            init_k=ckpt.get("init_k", 2),
+            delta_k=ckpt.get("delta_k", 0),
+            routit=ckpt.get("routit", 1),
+            tau=ckpt.get("tau", 1.0),
+            dropout=ckpt.get("dropout", 0.2),
+            num_layers=ckpt.get("num_layers", 1),
+        )
+        model.token_weights = nn.Parameter(torch.empty(1, num_sources))
+        model.moe_coe_router = MoECoERouter(num_sources, num_labels_list, defer_init=True)
+        model.open_prompt_weight = nn.Parameter(torch.empty(1, input_dim))
+        model.combine_weights = nn.Parameter(torch.empty(1, 2))
+        out_dim = hidden_dim  # DisenGCN output_dim equals hidden_dim when num_layers=1
+        model.register_buffer("prototypes", torch.zeros(num_classes, out_dim))
+        model.ave = torch.empty(num_classes, out_dim)
+
+        model.load_preprompt_checkpoint(ckpt, strict=False)
+        model.freeze_pretrain_parts()
+
+        set_seed_deterministic(seed)
+        model.init_downprompt_trainable()
+        return model.to(dev)
 
     # ---- Feature prompting ----
 
@@ -257,9 +328,9 @@ class GRAVERDownPromptModel(nn.Module):
         combined = F.elu(alpha * composed + beta * opened)
         return combined, graphon, token.squeeze(0)
 
-    # ---- Forward ----
+    # ---- Standard finetune (on-the-fly graphon, edge_index, pygfm toolbox default) ----
 
-    def forward(
+    def forward_standard(
         self,
         x: torch.Tensor,
         edge_index: torch.Tensor,
@@ -268,15 +339,7 @@ class GRAVERDownPromptModel(nn.Module):
         labels: torch.Tensor | None = None,
         train: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        :param x: [N, input_dim] full-graph features on target domain
-        :param edge_index: [2, E] full-graph edges on target domain
-        :param idx: [M] query/support node indices for this episode
-        :param graphon_list: [num_sources][num_labels_i] graphon tensors
-        :param labels: [M] support labels (used to refresh prototypes when train=True)
-        :param train: if True, update class prototypes
-        :return: (probs [M, C], entropy [M])
-        """
+        """Standard toolbox path: PCA-aligned features, target-graph graphon estimate."""
         x = x.to(self.device)
         edge_index = edge_index.to(self.device)
         idx = idx.to(self.device)
@@ -302,7 +365,57 @@ class GRAVERDownPromptModel(nn.Module):
 
         all_emb = torch.cat([emb_at_idx, self.prototypes], dim=0)
         cos_sim = F.cosine_similarity(all_emb.unsqueeze(1), all_emb.unsqueeze(0), dim=-1)
-        M = emb_at_idx.size(0)
+        m = emb_at_idx.size(0)
+        logits = cos_sim[:m, m:]
+        probs = F.softmax(logits, dim=1)
+        entropy = -torch.sum(probs * torch.log(probs + 1e-8), dim=1)
+        return probs, entropy
+
+    # ---- Cross-dataset reproduction (external graphon, sparse adj, dual-trial eval) ----
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        adj: torch.Tensor,
+        idx: torch.Tensor,
+        seq: torch.Tensor,
+        graphon_list: List[List[torch.Tensor]],
+        labels: torch.Tensor | None = None,
+        train: bool = False,
+        rng: np.random.Generator | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        :param x: [N, input_dim] full-graph features on target domain
+        :param adj: coalesced sparse COO adjacency [N, N]
+        :param idx: [M] query/support node indices for this episode
+        :param seq: [M, D] pretrain backbone embs at ``idx`` (shape used for logits slice)
+        :param graphon_list: [num_sources][num_labels_i] graphon tensors
+        :param labels: [M] support labels (used to refresh prototypes when train=True)
+        :param train: if True, update class prototypes via ``averageemb``
+        :return: (probs [M, C], entropy [M])
+        """
+        x = x.to(self.device)
+        adj = as_sparse_adj(adj, x.size(0)).to(self.device)
+        idx = idx.to(self.device)
+        seq = seq.to(self.device)
+
+        x_prompted, graphon, token = self._prompt_features(x, graphon_list)
+
+        gen = GraphonGenerator(graphon, self.gen_num_nodes, token)
+        idx_list = idx.tolist()
+        graphs = [gen.generate(rng=rng) for _ in range(len(idx_list))]
+        x_exp, adj_exp = inject_graphs_return_sparse(graphs, x_prompted, adj, idx_list)
+
+        embeds = self.disen_gcn(x_exp, adj_exp)
+        rawret = embeds[idx]
+
+        if train and labels is not None:
+            labels = labels.to(self.device)
+            self.ave = averageemb(labels, rawret, self.num_classes)
+
+        rawret = torch.cat((rawret, self.ave), dim=0)
+        cos_sim = F.cosine_similarity(rawret.unsqueeze(1), rawret.unsqueeze(0), dim=-1)
+        M = seq.shape[0]
         logits = cos_sim[:M, M:]
         probs = F.softmax(logits, dim=1)
         entropy = -torch.sum(probs * torch.log(probs + 1e-8), dim=1)
@@ -310,8 +423,8 @@ class GRAVERDownPromptModel(nn.Module):
 
     # ---- Helpers ----
 
-    def embed_backbone(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        """DisenGCN embeddings without prompting (prototype init)."""
+    def embed_backbone(self, x: torch.Tensor, edges: torch.Tensor) -> torch.Tensor:
+        """DisenGCN embeddings without prompting (cross-dataset backbone precompute)."""
         x = x.to(self.device)
-        edge_index = edge_index.to(self.device)
-        return self.disen_gcn(x, edge_index)
+        adj = as_sparse_adj(edges, x.size(0)).to(self.device)
+        return self.disen_gcn(x, adj)

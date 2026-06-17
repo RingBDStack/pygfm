@@ -89,6 +89,7 @@ def train():
     ).to(device)
 
     out_path = Path(args.output) if args.output else paths.save_model_dir / f"{args.dataset}.pt"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model, out_path)
     print(f"Initial checkpoint -> {out_path}")
 

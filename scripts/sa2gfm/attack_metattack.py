@@ -12,13 +12,13 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
-from _setup_repo import setup_repo
+from _setup_repo import sa2gfm_baseline_models_root, setup_repo
 
-REPO = setup_repo()
+setup_repo()
 
 from pygfm.public.cli.yaml_config import parse_args_with_config
 
-AG = REPO / "pygfm" / "baseline_models" / "sa2gfm" / "attack_data_gen" / "pipeline"
+AG = sa2gfm_baseline_models_root() / "attack_data_gen" / "pipeline"
 
 
 def main():

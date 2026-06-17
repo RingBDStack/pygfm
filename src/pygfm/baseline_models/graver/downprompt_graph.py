@@ -11,11 +11,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .downprompt import (
-    GRAVERDownPromptModel,
-    GraphonGenerator,
-    inject_graphs_to_target,
-)
+from .downprompt import GRAVERDownPromptModel, GraphonGenerator
+from .graph import as_sparse_adj, inject_graphs_return_sparse
 from ...public.utils import compute_prototypes
 
 
@@ -49,7 +46,7 @@ class GRAVERDownPromptGraphModel(GRAVERDownPromptModel):
     def forward_graph(
         self,
         x: torch.Tensor,
-        edge_index: torch.Tensor,
+        adj: torch.Tensor,
         idx: torch.Tensor,
         batch: torch.Tensor,
         graphon_list: List[List[torch.Tensor]],
@@ -58,7 +55,7 @@ class GRAVERDownPromptGraphModel(GRAVERDownPromptModel):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         :param x: [N, input_dim] full-graph node features
-        :param edge_index: [2, E] full-graph edges
+        :param adj: coalesced sparse COO adjacency [N, N]
         :param idx: [M] node indices (one per subgraph / graph instance)
         :param batch: [M] graph id for each idx node
         :param graphon_list: [num_sources][num_labels_i] graphon tensors
@@ -67,7 +64,7 @@ class GRAVERDownPromptGraphModel(GRAVERDownPromptModel):
         :return: (probs [G, C], entropy [G])
         """
         x = x.to(self.device)
-        edge_index = edge_index.to(self.device)
+        adj = as_sparse_adj(adj, x.size(0)).to(self.device)
         idx = idx.to(self.device)
         batch = batch.to(self.device)
 
@@ -77,11 +74,9 @@ class GRAVERDownPromptGraphModel(GRAVERDownPromptModel):
         idx_list = idx.tolist()
         with torch.no_grad():
             graphs = [gen.generate() for _ in range(len(idx_list))]
-        gen_x = [g[0] for g in graphs]
-        gen_ei = [g[1] for g in graphs]
-        x_exp, ei_exp = inject_graphs_to_target(gen_x, gen_ei, x_prompted, edge_index, idx_list)
+        x_exp, adj_exp = inject_graphs_return_sparse(graphs, x_prompted, adj, idx_list)
 
-        embeds = self.disen_gcn(x_exp, ei_exp)
+        embeds = self.disen_gcn(x_exp, adj_exp)
         emb_at_idx = embeds[idx]
 
         num_graphs = int(batch.max().item()) + 1

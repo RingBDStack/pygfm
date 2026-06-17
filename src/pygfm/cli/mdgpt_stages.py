@@ -155,6 +155,7 @@ def run_mdgpt_finetune(cfg: dict[str, Any]) -> None:
     dataset = str(f.get("dataset", "Cora"))
     k_shot = int(f.get("k_shot", 1))
     split_id = int(f.get("split_id", 0))
+    task_num = int(f.get("task_num", 0))
     ckpt_path = f.get("ckpt")
     if not ckpt_path:
         raise ValueError("YAML finetune.ckpt: path to preprompt *.pth required")
@@ -204,67 +205,97 @@ def run_mdgpt_finetune(cfg: dict[str, Any]) -> None:
 
     down_data = torch.load(splits_path, map_location="cpu")
     splits = down_data["splits"]
-    if not (0 <= split_id < len(splits)):
-        raise IndexError(f"split_id {split_id} out of range 0..{len(splits)-1}")
-    split = splits[split_id]
-    support_idx = torch.tensor(split["indices"], dtype=torch.long, device=device)
-    support_labels = torch.tensor(split["labels"], dtype=torch.long, device=device)
+
+    # --- determine which splits to run ---
+    if task_num > 0:
+        max_tasks = min(task_num, len(splits))
+        split_ids = list(range(max_tasks))
+    else:
+        if not (0 <= split_id < len(splits)):
+            raise IndexError(f"split_id {split_id} out of range 0..{len(splits)-1}")
+        split_ids = [split_id]
 
     test_start = max(0, len(y) - test_reserve)
     test_idx = torch.arange(test_start, len(y), device=device)
     test_labels = y[test_idx]
 
-    down = DownPromptModel(
-        gcn=preprompt.gcn,
-        input_dim=unify_dim,
-        hidden_dim=hidden_dim,
-        num_classes=num_classes,
-        prompt_mode=prompt_mode,
-        device=device,
-    )
-    try:
-        down.prefeature.load_state_dict(preprompt.pretexts[0].state_dict(), strict=False)
-    except Exception:
-        pass
+    acc_list: list[float] = []
 
-    opt = torch.optim.Adam(down.prefeature.parameters(), lr=lr)
-    best_loss = 1e9
-    wait = 0
-    for step in range(max_steps):
-        down.train()
-        opt.zero_grad()
-        logits = down(
-            x,
-            edge_index,
-            support_idx=support_idx,
-            support_labels=support_labels,
-            query_idx=support_idx,
-            train=True,
-        )
-        loss = F.cross_entropy(logits, support_labels)
-        loss.backward()
-        opt.step()
-        if loss.item() < best_loss:
-            best_loss = loss.item()
-            wait = 0
-        else:
-            wait += 1
-        if step % 50 == 0:
-            print(f"step={step} loss={loss.item():.4f}")
-        if wait >= patience:
-            print(f"early stopping step={step} best_loss={best_loss:.4f}")
-            break
+    for sid in split_ids:
+        split = splits[sid]
+        support_idx = torch.tensor(split["indices"], dtype=torch.long, device=device)
+        support_labels = torch.tensor(split["labels"], dtype=torch.long, device=device)
 
-    down.eval()
-    with torch.inference_mode():
-        logits = down(
-            x,
-            edge_index,
-            support_idx=support_idx,
-            support_labels=support_labels,
-            query_idx=test_idx,
-            train=False,
+        # Fresh DownPromptModel per split
+        down = DownPromptModel(
+            gcn=preprompt.gcn,
+            input_dim=unify_dim,
+            hidden_dim=hidden_dim,
+            num_classes=num_classes,
+            prompt_mode=prompt_mode,
+            device=device,
         )
-        preds = logits.argmax(dim=1)
-        acc = (preds == test_labels).float().mean().item()
-    print(f"[{dataset}] {k_shot}-shot split {split_id} test acc: {acc:.4f}")
+        try:
+            down.prefeature.load_state_dict(preprompt.pretexts[0].state_dict(), strict=False)
+        except Exception:
+            pass
+
+        print(
+            f">> Finetune {dataset} | {k_shot}-shot | split {sid} | "
+            f"support={len(support_idx)}, test={len(test_idx)}"
+        )
+
+        opt = torch.optim.Adam(down.prefeature.parameters(), lr=lr)
+        best_loss = 1e9
+        wait = 0
+        for step in range(max_steps):
+            down.train()
+            opt.zero_grad()
+            logits = down(
+                x,
+                edge_index,
+                support_idx=support_idx,
+                support_labels=support_labels,
+                query_idx=support_idx,
+                train=True,
+            )
+            loss = F.cross_entropy(logits, support_labels)
+            loss.backward()
+            opt.step()
+            if loss.item() < best_loss:
+                best_loss = loss.item()
+                wait = 0
+            else:
+                wait += 1
+            if step % 50 == 0:
+                print(f"  step={step} loss={loss.item():.4f}")
+            if wait >= patience:
+                print(f"  early stopping step={step} best_loss={best_loss:.4f}")
+                break
+
+        down.eval()
+        with torch.inference_mode():
+            logits = down(
+                x,
+                edge_index,
+                support_idx=support_idx,
+                support_labels=support_labels,
+                query_idx=test_idx,
+                train=False,
+            )
+            preds = logits.argmax(dim=1)
+            acc = (preds == test_labels).float().mean().item()
+
+        acc_list.append(acc)
+        print(f"  [{dataset}] {k_shot}-shot split {sid} test acc: {acc:.4f}")
+
+    if len(acc_list) > 1:
+        acc_tensor = torch.tensor(acc_list)
+        mean_acc = acc_tensor.mean().item()
+        std_acc = acc_tensor.std().item()
+        print(
+            f"[{dataset}] {k_shot}-shot "
+            f"{len(acc_list)} splits mean acc: {mean_acc:.4f}, std: {std_acc:.4f}"
+        )
+    else:
+        print(f"[{dataset}] {k_shot}-shot split {split_ids[0]} test acc: {acc_list[0]:.4f}")

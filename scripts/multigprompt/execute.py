@@ -16,9 +16,10 @@ import os
 import random
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
 # Repo root on sys.path so ``pygfm`` imports work without a prior editable install.
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = driver_script_repo_root(__file__)
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 

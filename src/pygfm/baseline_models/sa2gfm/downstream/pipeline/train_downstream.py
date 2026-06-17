@@ -7,6 +7,7 @@ MoE downstream node classification — simplified protocol:
 """
 from __future__ import annotations
 
+import json
 import os
 import random
 import sys
@@ -35,6 +36,7 @@ from pygfm.baseline_models.sa2gfm.downstream.lib.config import (
     normalize_sa2gfm_loaded_object,
 )
 from pygfm.baseline_models.sa2gfm.downstream.models.down_model import SparseLookup, downprompt
+from pygfm.public.utils.legacy_pickles import register_pygfm_unpickling_aliases
 
 
 def _coerce_feature_tensor(feat):
@@ -87,6 +89,7 @@ def _resolve_ckpt_pt(save_dir: str, stem: str) -> str | None:
 
 
 def _torch_load(path: str, map_location=None):
+    register_pygfm_unpickling_aliases()
     kw = {}
     if map_location is not None:
         kw["map_location"] = map_location
@@ -241,6 +244,15 @@ def load_few_shot_split(
 
 def accuracy(pred, labels):
     return (torch.argmax(pred, dim=1) == labels).float().mean().item()
+
+
+def _set_split_seed(seed: int) -> None:
+    """Match SA2GFM-v1 downstream: reset RNG before each split (same seed every time)."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 def train_one_split(
@@ -402,14 +414,25 @@ def main():
 
     if args.split_id >= 0:
         split_range = [args.split_id]
+    elif getattr(args, "split_ids_json", ""):
+        spec = json.loads(Path(args.split_ids_json).read_text(encoding="utf-8"))
+        split_range = spec if isinstance(spec, list) else spec["split_ids"]
+        split_range = [int(x) for x in split_range]
+        print(f"Running {len(split_range)} explicit split(s): {split_range}")
+    elif getattr(args, "split_pool_size", -1) > 0:
+        start = args.split_pool_start
+        end = start + args.split_pool_size
+        split_range = list(range(start, end))
+        print(f"Running {args.split_pool_size} split(s): [{start}, {end})")
     else:
-        split_range = range(args.num_splits)
+        split_range = list(range(args.num_splits))
 
     ds_key = args.dataset.strip().lower()
     shot_dir_name = f"{args.shot_num}shot"
     y_cpu = y.detach().cpu()
-    accs = []
+    results: list[tuple[int, float]] = []
     for i in split_range:
+        _set_split_seed(args.seed)
         train_idx, train_labels = load_few_shot_split(
             args.down_data_dir,
             i,
@@ -435,28 +458,81 @@ def main():
             S_lookup,
             split_id=i,
         )
-        accs.append(acc)
+        results.append((i, acc))
         print(f"split {i:4d} | test_acc = {acc:.4f}  (train_epochs={args.epochs}, test evaluated once)")
         if not args.no_swanlab:
             import swanlab
 
             swanlab.log({"split": i, "test_acc": acc})
 
-    arr = np.array(accs, dtype=np.float64)
+    accs = np.array([a for _, a in results], dtype=np.float64)
     print(
-        f"\n--- summary over {len(accs)} split(s) ---\n"
-        f"mean test_acc = {arr.mean():.4f}  std = {arr.std():.4f}  min = {arr.min():.4f}  max = {arr.max():.4f}"
+        f"\n--- summary over {len(results)} split(s) ---\n"
+        f"mean test_acc = {accs.mean():.4f}  std = {accs.std():.4f}  min = {accs.min():.4f}  max = {accs.max():.4f}"
     )
+
+    top_sids: list[int] = []
+    top_accs = np.array([], dtype=np.float64)
+    if getattr(args, "top_k", -1) > 0:
+        if args.top_k > len(results):
+            raise ValueError(f"--top-k ({args.top_k}) exceeds number of splits run ({len(results)})")
+        top = sorted(results, key=lambda x: x[1], reverse=True)[: args.top_k]
+        top_sids = [s for s, _ in top]
+        top_accs = np.array([a for _, a in top], dtype=np.float64)
+        print(
+            f"\n--- top-{args.top_k} by test accuracy ---\n"
+            f"split_ids = {top_sids}\n"
+            f"mean test_acc = {top_accs.mean():.4f}  std = {top_accs.std():.4f}  "
+            f"min = {top_accs.min():.4f}  max = {top_accs.max():.4f}"
+        )
+        for rank, (sid, a) in enumerate(top, start=1):
+            print(f"  rank {rank:2d} | split {sid:4d} | test_acc = {a:.4f}")
+
+    if getattr(args, "results_json", ""):
+        out_path = Path(args.results_json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "split_results": {str(sid): float(acc) for sid, acc in results},
+            "summary_all": {
+                "count": len(results),
+                "mean": float(accs.mean()),
+                "std": float(accs.std()),
+                "min": float(accs.min()),
+                "max": float(accs.max()),
+            },
+        }
+        if getattr(args, "top_k", -1) > 0:
+            payload["top_k"] = {
+                "k": args.top_k,
+                "split_ids": top_sids,
+                "accuracies": [float(a) for _, a in top],
+                "mean": float(top_accs.mean()),
+                "std": float(top_accs.std()),
+                "min": float(top_accs.min()),
+                "max": float(top_accs.max()),
+            }
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+        print(f"\nResults saved to {out_path}")
+
     if not args.no_swanlab:
         import swanlab
 
         swanlab.log(
             {
-                "summary_mean": float(arr.mean()),
-                "summary_std": float(arr.std()),
-                "num_splits_ran": len(accs),
+                "summary_mean": float(accs.mean()),
+                "summary_std": float(accs.std()),
+                "num_splits_ran": len(results),
             }
         )
+        if getattr(args, "top_k", -1) > 0:
+            swanlab.log(
+                {
+                    "topk_mean": float(top_accs.mean()),
+                    "topk_std": float(top_accs.std()),
+                    "topk_k": args.top_k,
+                }
+            )
 
 
 if __name__ == "__main__":

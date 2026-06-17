@@ -22,10 +22,11 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
 import yaml
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = driver_script_repo_root(__file__)
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
@@ -38,13 +39,24 @@ from pygfm.public.cli.export_yaml import add_export_yaml_arguments, resolve_expo
 
 
 def _default_yaml() -> Path:
-    return (
-        _ROOT
-        / "pygfm"
-        / "baseline_models"
-        / "oneforall"
-        / "configs"
-        / "default_config.yaml"
+    """Packaged default lives under ``pygfm.baseline_models.oneforall``; cwd-based ``_ROOT`` may not contain ``pygfm/``."""
+    tail = Path("pygfm") / "baseline_models" / "oneforall" / "configs" / "default_config.yaml"
+    candidates = [
+        _ROOT / tail,
+        _ROOT / "src" / tail,
+    ]
+    try:
+        import pygfm.baseline_models.oneforall as _ofa
+
+        candidates.append(Path(_ofa.__file__).resolve().parent / "configs" / "default_config.yaml")
+    except ImportError:
+        pass
+    for p in candidates:
+        if p.is_file():
+            return p
+    raise FileNotFoundError(
+        "OneForAll default_config.yaml not found. Tried:\n  "
+        + "\n  ".join(str(c) for c in candidates)
     )
 
 

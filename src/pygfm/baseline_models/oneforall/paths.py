@@ -5,6 +5,11 @@ Override with environment variables for production:
   ONEFORALL_DATA_ROOT   — user PyG graph assets root (default: <repo>/datasets/oneforall)
   ONEFORALL_CACHE_ROOT  — preprocessed/encoded OFA cache (default: <data_root>/cache_data)
   ONEFORALL_EXP_ROOT    — experiment logs (default: <repo>/ckpts/oneforall/runs)
+  PYGFM_REPO_ROOT       — checkout root when resolving paths from a pip install (optional)
+
+Run YAML ``data_root`` is applied via :func:`configure_runtime_data_root` before ``setup_exp`` so
+``./datasets/oneforall`` resolves under the process cwd (not ``site-packages``, which can contain
+Hugging Face's unrelated ``datasets`` package).
 """
 
 from __future__ import annotations
@@ -14,18 +19,53 @@ from pathlib import Path
 
 _PKG_DIR = Path(__file__).resolve().parent
 
+# Set from run YAML ``data_root`` (run_cdm) so pip installs resolve Cora.pt under cwd, not site-packages.
+_runtime_data_root: Path | None = None
+
+
+def configure_runtime_data_root(data_root: str | Path | None) -> None:
+    """Anchor graph assets (``Cora.pt``, …) from merged run config. Relative paths use :func:`os.getcwd`."""
+    global _runtime_data_root
+    if data_root is None:
+        _runtime_data_root = None
+        return
+    s = str(data_root).strip()
+    if s in ("", "null", "None"):
+        _runtime_data_root = None
+        return
+    p = Path(s).expanduser()
+    if not p.is_absolute():
+        p = (Path.cwd() / p).resolve()
+    else:
+        p = p.resolve()
+    _runtime_data_root = p
+
+
+def _is_huggingface_datasets_package(datasets_dir: Path) -> bool:
+    """``site-packages/datasets`` is the Hugging Face *library*, not GFM's data folder."""
+    return (datasets_dir / "__init__.py").is_file()
+
 
 def _repo_root() -> Path:
-    """GFM-Toolbox repo root (directory containing `pygfm/` and `datasets/`)."""
+    """Project / checkout root for ``datasets/``, ``ckpts/`` (not ``site-packages``)."""
     p = _PKG_DIR
-    for _ in range(8):
+    for _ in range(14):
         if (p / "pyproject.toml").exists():
             return p
         if (p / "pygfm").is_dir() and (p / "datasets").is_dir():
+            if not _is_huggingface_datasets_package(p / "datasets"):
+                return p
+        if (p / "src" / "pygfm").is_dir() and (p / "pyproject.toml").exists():
             return p
+        if p.parent == p:
+            break
         p = p.parent
-    # paths.py lives at <repo>/pygfm/baseline_models/oneforall/
-    return _PKG_DIR.parents[2]
+    env = os.environ.get("PYGFM_REPO_ROOT") or os.environ.get("ONEFORALL_PROJECT_ROOT")
+    if env:
+        ep = Path(env).expanduser().resolve()
+        if ep.is_dir():
+            return ep
+    return Path.cwd().resolve()
 
 
 def get_data_root() -> Path:
@@ -33,6 +73,8 @@ def get_data_root() -> Path:
 
     Preprocessed OFA cache: :func:`get_cache_root` (default ``<data_root>/cache_data``).
     """
+    if _runtime_data_root is not None:
+        return _runtime_data_root
     env = os.environ.get("ONEFORALL_DATA_ROOT")
     if env:
         return Path(env).expanduser().resolve()

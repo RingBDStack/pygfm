@@ -19,11 +19,12 @@ import json
 import os
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
 from hydra import compose, initialize_config_dir
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]  # .../gfm-toolbox-main
+PROJECT_ROOT = driver_script_repo_root(__file__, parents_up_to_repo=3)  # .../gfm-toolbox-main
 GRAPH_TEXT_ROOT = PROJECT_ROOT / "pygfm" / "models" / "graphtext"
 CONFIG_DIR = PROJECT_ROOT / "scripts" / "graphtext" / "config"
 

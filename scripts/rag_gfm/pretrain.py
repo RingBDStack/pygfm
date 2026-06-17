@@ -17,8 +17,9 @@ import os
 import sys
 import warnings
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = driver_script_repo_root(__file__)
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -34,6 +35,7 @@ from pygfm.private.utlis.rag_gfm.motif_builder import load_node_data_for_motif
 from pygfm.baseline_models.rag_gfm import PrePromptModel
 from pygfm.public.utils import set_seed, early_stopping
 from pygfm.public.cli.export_yaml import add_export_yaml_arguments, handle_export_args
+from pygfm.public.cli.yaml_config import parse_args_with_optional_yaml
 
 
 # Default pretrain datasets for RAG-GFM (aligned with common model_node_rag setups)
@@ -89,7 +91,7 @@ def main():
     )
     p.add_argument("--swanlab_run_name", type=str, default=None, help="SwanLab run name (auto if omitted)")
     add_export_yaml_arguments(p)
-    args = p.parse_args()
+    args = parse_args_with_optional_yaml(p)
     handle_export_args(p, args, script_file=Path(__file__))
 
     # Resolve relative paths against repo root

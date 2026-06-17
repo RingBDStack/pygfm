@@ -1,88 +1,46 @@
 #!/usr/bin/env python
 """
-GRAVER DownPrompt few-shot node classification: load PrePrompt ckpt, PCA-align target domain,
-graphon estimate + MoE/CoE routing -> prototype cosine matching + entropy-regularized finetune.
+GRAVER DownPrompt few-shot node classification.
+
+Supports ``experiment_type``:
+- ``standard``: on-the-fly graphon on target graph + PCA-aligned features
+- ``cross-dataset``: external graphon files + GRAVER export features (dual-trial eval, early stopping)
 
 Examples:
   python scripts/graver/finetune.py --dataset Cora --k_shot 1 \\
-    --ckpt ckpts/graver/cora/preprompt_cora.pth --split_id 0
+    --ckpt ckpts/graver/cora/preprompt.pkl --experiment_type cross-dataset
 """
 from __future__ import annotations
 
 import argparse
 import os
 import sys
-from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
 import numpy as np
 import torch
 import torch.nn as nn
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = driver_script_repo_root(__file__)
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
 
 from pygfm.private.utlis.domain_alignment import DomainAlignment
-from pygfm.baseline_models.graver import GRAVERDownPromptModel
-from pygfm.public.utils.runtime import compute_prototypes, load_single_graph_dataset, set_seed
+from pygfm.baseline_models.graver import (
+    GRAVERDownPromptModel,
+    edge_index_to_sparse_adj,
+    estimate_graphon,
+    load_cross_dataset_graphons,
+    load_graver_node_features,
+    load_graver_preprompt_checkpoint,
+    make_forward_rng,
+)
+from pygfm.public.utils.runtime import load_single_graph_dataset, set_seed
 from pygfm.public.cli.yaml_config import parse_args_with_optional_yaml
 from pygfm.public.cli.export_yaml import add_export_yaml_arguments, handle_export_args
 from pygfm.public.cli.default_ckpt import resolve_preprompt_ckpt
-
-
-# ---------------------------------------------------------------------------
-# Graphon estimation helpers
-# ---------------------------------------------------------------------------
-
-def estimate_graphon(edge_index: torch.Tensor, labels: torch.Tensor,
-                     num_nodes: int, resolution: int = 10) -> list[torch.Tensor]:
-    """
-    Estimate a simple graphon matrix per class.
-    Returns ``num_classes`` tensors of shape [resolution, resolution].
-    """
-    import scipy.sparse as sp
-
-    ei = edge_index.cpu().numpy()
-    adj = sp.coo_matrix(
-        (np.ones(ei.shape[1]), (ei[0], ei[1])),
-        shape=(num_nodes, num_nodes),
-    ).tocsr()
-
-    num_classes = int(labels.max().item()) + 1
-    graphons = []
-    for c in range(num_classes):
-        idx_c = (labels == c).nonzero(as_tuple=False).view(-1).cpu().numpy()
-        if len(idx_c) < 2:
-            graphons.append(torch.zeros(resolution, resolution))
-            continue
-        sub = adj[np.ix_(idx_c, idx_c)].toarray().astype(np.float32)
-        n = sub.shape[0]
-        if n <= resolution:
-            pad = np.zeros((resolution, resolution), dtype=np.float32)
-            pad[:n, :n] = sub
-            graphons.append(torch.from_numpy(pad))
-        else:
-            step = n / resolution
-            g = np.zeros((resolution, resolution), dtype=np.float32)
-            for i in range(resolution):
-                for j in range(resolution):
-                    ri = slice(int(i * step), int((i + 1) * step))
-                    rj = slice(int(j * step), int((j + 1) * step))
-                    block = sub[ri, rj]
-                    g[i, j] = block.mean() if block.size > 0 else 0.0
-            graphons.append(torch.from_numpy(g))
-    return graphons
-
-
-# ---------------------------------------------------------------------------
-# Data loading
-# ---------------------------------------------------------------------------
-
-def _load_graph(data_root: str, dataset: str):
-    """Same as ``load_all_datasets``: flat ``Cora.pt`` etc. under ``data_root``."""
-    return load_single_graph_dataset(data_root, dataset)
 
 
 def _parse():
@@ -96,16 +54,24 @@ def _parse():
         "--ckpt",
         type=str,
         default=None,
-        help="PrePrompt checkpoint; if omitted, auto-detect under ckpts/graver/ by dataset",
+        help="PrePrompt checkpoint (.pth / .pkl); auto-detect under ckpts/graver/ if omitted",
+    )
+    p.add_argument(
+        "--experiment_type",
+        type=str,
+        default="standard",
+        choices=["standard", "cross-dataset"],
+        help="standard: on-the-fly graphon; cross-dataset: load external graphon + paper protocol",
     )
     p.add_argument("--downstream_root", type=str, default="downstream_data/graver")
     p.add_argument("--splits_path", type=str, default=None)
     p.add_argument("--split_id", type=int, default=0)
-    p.add_argument("--task_num", type=int, default=0, help="If >0, run only first task_num splits")
+    p.add_argument("--task_num", type=int, default=0, help="If >0, run splits 0 .. task_num-1")
     p.add_argument("--data_root", type=str, default="datasets/graver")
+    p.add_argument("--graphon_root", type=str, default="datasets/graver/graphon")
     p.add_argument("--seed", type=int, default=39)
-    # Training hyperparameters
     p.add_argument("--max_epochs", type=int, default=50)
+    p.add_argument("--patience", type=int, default=0, help="Early stopping patience (0 = disabled)")
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--lambda_entropy", type=float, default=0.2)
     p.add_argument("--test_reserve", type=int, default=1000)
@@ -119,6 +85,136 @@ def _parse():
     return p, parse_args_with_optional_yaml(p)
 
 
+def _resolve_splits_path(args) -> str:
+    if args.splits_path:
+        return args.splits_path
+    return os.path.join(args.downstream_root, args.dataset, f"{args.k_shot}shot", "splits.pt")
+
+
+def _dual_trial_acc_cross(
+    model,
+    x,
+    adj,
+    test_idx,
+    seq,
+    graphon_list,
+    test_y,
+    *,
+    seed: int,
+    split_id: int,
+) -> float:
+    accs: list[float] = []
+    for phase in (0, 1):
+        rng = make_forward_rng(seed, split_id, 0, phase)
+        with torch.no_grad():
+            probs, _ = model(
+                x, adj, test_idx, seq[test_idx], graphon_list, rng=rng,
+            )
+            pred = probs.argmax(1)
+            accs.append((pred == test_y).float().mean().item())
+    return float(sum(accs) / len(accs))
+
+
+def _finetune_standard_split(
+    *,
+    model,
+    x,
+    edge_index,
+    train_idx,
+    train_y,
+    test_idx,
+    test_y,
+    graphon_list,
+    args,
+    sid: int,
+) -> float:
+    opt = torch.optim.Adam([p for p in model.parameters() if p.requires_grad], lr=args.lr)
+    xent = nn.CrossEntropyLoss()
+    best_loss = float("inf")
+    stale = 0
+
+    for epoch in range(args.max_epochs):
+        model.train()
+        opt.zero_grad()
+        probs, entropy = model.forward_standard(
+            x, edge_index, train_idx, graphon_list, train_y, train=True,
+        )
+        loss = xent(probs, train_y) + args.lambda_entropy * entropy.mean()
+        loss.backward()
+        opt.step()
+
+        loss_val = float(loss.detach())
+        if args.patience > 0:
+            if loss_val + 1e-8 < best_loss:
+                best_loss = loss_val
+                stale = 0
+            else:
+                stale += 1
+                if stale >= args.patience:
+                    break
+
+    model.eval()
+    with torch.no_grad():
+        probs_test, _ = model.forward_standard(x, edge_index, test_idx, graphon_list)
+        pred = probs_test.argmax(1)
+        return (pred == test_y).float().mean().item()
+
+
+def _finetune_cross_split(
+    *,
+    model,
+    x,
+    adj,
+    edge_index,
+    train_idx,
+    train_y,
+    test_idx,
+    test_y,
+    graphon_list,
+    args,
+    sid: int,
+) -> float:
+    seq = model.embed_backbone(x, edge_index)
+    opt = torch.optim.Adam([p for p in model.parameters() if p.requires_grad], lr=args.lr)
+    xent = nn.CrossEntropyLoss()
+    best_loss = float("inf")
+    stale = 0
+
+    for epoch in range(args.max_epochs):
+        model.train()
+        opt.zero_grad()
+        rng = make_forward_rng(args.seed, sid, epoch, 0)
+        probs, entropy = model(
+            x,
+            adj,
+            train_idx,
+            seq[train_idx],
+            graphon_list,
+            train_y,
+            train=True,
+            rng=rng,
+        )
+        loss = xent(probs, train_y) + args.lambda_entropy * entropy.mean()
+        loss.backward()
+        opt.step()
+
+        loss_val = float(loss.detach())
+        if args.patience > 0:
+            if loss_val + 1e-8 < best_loss:
+                best_loss = loss_val
+                stale = 0
+            else:
+                stale += 1
+                if stale >= args.patience:
+                    break
+
+    model.eval()
+    return _dual_trial_acc_cross(
+        model, x, adj, test_idx, seq, graphon_list, test_y,
+        seed=args.seed, split_id=sid,
+    )
+
+
 def main():
     p, args = _parse()
     handle_export_args(p, args)
@@ -130,100 +226,114 @@ def main():
     if use_swanlab:
         try:
             import swanlab
-            swanlab.init(project=args.swanlab_project,
-                         experiment_name=f"graver_ft_{args.dataset}_{args.k_shot}shot")
+
+            swanlab.init(
+                project=args.swanlab_project,
+                experiment_name=f"graver_ft_{args.dataset}_{args.k_shot}shot",
+            )
         except ImportError:
             use_swanlab = False
 
-    # ---- Load PrePrompt ckpt ----
-    ckpt = torch.load(args.ckpt, map_location=device)
-    input_dim = ckpt["input_dim"]
-    hidden_dim = ckpt["hidden_dim"]
-    num_sources = ckpt["num_sources"]
-    ordered_names = ckpt["ordered_names"]
+    ckpt = load_graver_preprompt_checkpoint(
+        args.ckpt,
+        target_dataset=args.dataset,
+        experiment_type=args.experiment_type,
+        map_location=device,
+    )
+    num_sources = int(ckpt["num_sources"])
 
-    # ---- Load target graph ----
-    data, num_classes = _load_graph(args.data_root, args.dataset)
-    x_np = data.x.cpu().numpy().astype(np.float64)
-    if args.row_norm:
-        rs = x_np.sum(axis=1, keepdims=True)
-        rs[rs == 0] = 1.0
-        x_np /= rs
-    aligner = DomainAlignment(n_components=input_dim)
-    aligner.fit(x_np)
-    x = torch.from_numpy(aligner.transform(x_np).astype(np.float32)).to(device)
-    edge_index = data.edge_index.to(device)
+    data, num_classes = load_single_graph_dataset(args.data_root, args.dataset)
     y = data.y.to(device)
 
-    # ---- Per-source graphon (simplified: class subgraphs on target) ----
-    graphon_per_class = estimate_graphon(edge_index, y, x.size(0), args.graphon_resolution)
-    num_labels_list = [len(graphon_per_class)] * num_sources
-    graphon_list = [graphon_per_class] * num_sources
-
-    # ---- Load splits ----
-    if args.splits_path:
-        spath = args.splits_path
+    if args.experiment_type == "cross-dataset":
+        x = load_graver_node_features(data, device)
+        edge_index = data.edge_index.to(device)
+        adj = edge_index_to_sparse_adj(edge_index, x.size(0))
+        graphon_list, num_labels_list = load_cross_dataset_graphons(
+            args.graphon_root, args.dataset, args.experiment_type,
+        )
     else:
-        spath = os.path.join(args.downstream_root, args.dataset, f"{args.k_shot}shot", "splits.pt")
-    down = torch.load(spath, map_location="cpu")
+        x_np = data.x.cpu().numpy().astype(np.float64)
+        if args.row_norm:
+            rs = x_np.sum(axis=1, keepdims=True)
+            rs[rs == 0] = 1.0
+            x_np /= rs
+        input_dim = int(ckpt["input_dim"])
+        aligner = DomainAlignment(n_components=input_dim)
+        aligner.fit(x_np)
+        x = torch.from_numpy(aligner.transform(x_np).astype(np.float32)).to(device)
+        edge_index = data.edge_index.to(device)
+        adj = None
+        graphon_per_class = estimate_graphon(
+            edge_index, y, x.size(0), args.graphon_resolution,
+        )
+        num_labels_list = [len(graphon_per_class)] * num_sources
+        graphon_list = [graphon_per_class] * num_sources
+
+    spath = _resolve_splits_path(args)
+    down = torch.load(spath, map_location="cpu", weights_only=False)
     splits = down["splits"]
     n_splits = len(splits)
-    split_ids = list(range(min(args.task_num, n_splits))) if args.task_num > 0 else [args.split_id]
+    split_ids = (
+        list(range(min(args.task_num, n_splits)))
+        if args.task_num > 0
+        else [args.split_id]
+    )
 
     test_start = max(0, y.size(0) - args.test_reserve)
     test_idx = torch.arange(test_start, y.size(0), device=device)
     test_y = y[test_idx]
 
-    # ---- Finetune loop ----
-    xent = nn.CrossEntropyLoss()
-    acc_list = []
-
+    acc_list: list[float] = []
     for sid in split_ids:
         split = splits[sid]
         train_idx = torch.tensor(split["indices"], dtype=torch.long, device=device)
         train_y = torch.tensor(split["labels"], dtype=torch.long, device=device)
 
-        model = GRAVERDownPromptModel(
-            input_dim=input_dim,
-            hidden_dim=hidden_dim,
-            num_sources=num_sources,
-            num_classes=num_classes,
-            num_labels_list=num_labels_list,
-            init_k=ckpt.get("init_k", 2),
-            delta_k=ckpt.get("delta_k", 0),
-            routit=ckpt.get("routit", 1),
-            tau=ckpt.get("tau", 1.0),
-            dropout=ckpt.get("dropout", 0.2),
-            num_layers=ckpt.get("num_layers", 1),
+        model = GRAVERDownPromptModel.for_finetune(
+            ckpt,
+            num_labels_list,
+            num_classes,
+            seed=args.seed,
             gen_num_nodes=args.gen_num_nodes,
             combine_type=args.combine_type,
             device=device,
         )
-        model.load_preprompt_checkpoint(ckpt, strict=False)
-        model.freeze_pretrain_parts()
 
-        opt = torch.optim.Adam(
-            [p for p in model.parameters() if p.requires_grad], lr=args.lr,
-        )
+        if args.experiment_type == "cross-dataset":
+            acc = _finetune_cross_split(
+                model=model,
+                x=x,
+                adj=adj,
+                edge_index=edge_index,
+                train_idx=train_idx,
+                train_y=train_y,
+                test_idx=test_idx,
+                test_y=test_y,
+                graphon_list=graphon_list,
+                args=args,
+                sid=sid,
+            )
+        else:
+            acc = _finetune_standard_split(
+                model=model,
+                x=x,
+                edge_index=edge_index,
+                train_idx=train_idx,
+                train_y=train_y,
+                test_idx=test_idx,
+                test_y=test_y,
+                graphon_list=graphon_list,
+                args=args,
+                sid=sid,
+            )
 
-        for epoch in range(args.max_epochs):
-            model.train()
-            opt.zero_grad()
-            probs, entropy = model(x, edge_index, train_idx, graphon_list, train_y, train=True)
-            loss = xent(probs, train_y) + args.lambda_entropy * entropy.mean()
-            loss.backward()
-            opt.step()
-
-        model.eval()
-        with torch.no_grad():
-            probs_test, _ = model(x, edge_index, test_idx, graphon_list)
-            pred = probs_test.argmax(1)
-            acc = (pred == test_y).float().mean().item()
         acc_list.append(acc)
         print(f"[{args.dataset}] {args.k_shot}-shot split {sid} test acc: {acc:.4f}")
         if use_swanlab:
             try:
                 import swanlab
+
                 swanlab.log({f"acc_split_{sid}": acc})
             except Exception:
                 pass

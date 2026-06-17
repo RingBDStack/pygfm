@@ -1,7 +1,7 @@
 import os
 
-# pytorch_lightning imports huggingface_hub; ENDPOINT is read on first import.
-# Set before importing torch / pytorch_lightning or requests still go to huggingface.co
+# Lightning imports huggingface_hub; ENDPOINT is read on first import.
+# Set before importing torch / lightning or requests still go to huggingface.co
 if not os.environ.get("HF_ENDPOINT"):
     os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
@@ -9,10 +9,11 @@ import argparse
 from types import SimpleNamespace
 
 import torch
-from pytorch_lightning.loggers import WandbLogger
+from lightning.pytorch.loggers import WandbLogger
 from torchmetrics import AUROC, Accuracy
 
 from pygfm.baseline_models.oneforall import utils
+from pygfm.baseline_models.oneforall.paths import configure_runtime_data_root
 from pygfm.baseline_models.oneforall.gp.lightning.data_template import DataModule
 from pygfm.baseline_models.oneforall.gp.lightning.metric import (
     flat_binary_func,
@@ -289,6 +290,7 @@ if __name__ == "__main__":
 
     mod_params = combine_dict(*configs)
     mod_params = merge_mod(mod_params, params.opts)
+    configure_runtime_data_root(mod_params.get("data_root"))
     setup_exp(mod_params)
 
     params = SimpleNamespace(**mod_params)

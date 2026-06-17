@@ -179,13 +179,14 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer,
         return
 
     state_dict = trainer.model.state_dict()
-    if trainer.args.should_save:
-        cpu_state_dict = {
-            key: value.cpu()
-            for key, value in state_dict.items()
-        }
-        del state_dict
-        trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
+    cpu_state_dict = {
+        key: value.cpu()
+        for key, value in state_dict.items()
+    }
+    del state_dict
+    # ``save_strategy: no`` sets ``should_save`` False for the whole run; without an explicit
+    # ``trainer._save`` here, ``output_dir`` stays empty and ``extract_graph_projector`` fails.
+    trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
 
 
 def smart_tokenizer_and_embedding_resize(
@@ -812,13 +813,34 @@ def train():
         # Prefer ckpts/graphgpt/checkpoints/<tower>/ if <tower> is a name like "clip_gt_arxiv".
         _ckpt_root = pathlib.Path("ckpts") / "graphgpt" / "checkpoints"
         _enc = _ckpt_root / _tower
+        _clip_enc_names = (
+            "clip_gt_arxiv",
+            "clip_gt",
+            "clip_gcn_arxiv",
+            "clip_gt_arxiv_pub",
+        )
         if _enc.is_dir():
+            # Empty placeholder dirs are a common footgun: is_dir() is true but config.json is missing.
+            if _tower in _clip_enc_names and not (_enc / "config.json").is_file():
+                raise FileNotFoundError(
+                    f"GraphGPT graph encoder incomplete: {_enc.resolve()} "
+                    "is a directory but config.json is missing (expected GraphCLIP-GT: config.json + *.pkl). "
+                    "Add the real checkpoint files, delete this empty folder, or set graph_tower: MPNN "
+                    "for smoke runs without encoder weights."
+                )
             model.config.pretrain_graph_model_path = str(_enc.resolve()) + os.sep
         elif pathlib.Path(_tower).is_dir():
             # If user passes an explicit path to the encoder directory.
             model.config.pretrain_graph_model_path = str(pathlib.Path(_tower).resolve()) + os.sep
         else:
-            # Backward-compatible: treat as a relative path.
+            _clip_like = _tower in _clip_enc_names
+            if _clip_like:
+                raise FileNotFoundError(
+                    f"GraphGPT graph encoder directory missing: {_enc.resolve()} "
+                    "(expected config.json and a *.pkl from GraphCLIP-GT). "
+                    "Populate that folder or set graph_tower: MPNN for smoke runs without encoder weights."
+                )
+            # Backward-compatible: treat as a relative path fragment.
             model.config.pretrain_graph_model_path = (
                 model.config.pretrain_graph_model_path or ""
             ) + _tower
@@ -889,7 +911,10 @@ def train():
             pretrain_graph_mlp_adapter=model_args.pretrain_graph_mlp_adapter,
             fsdp=training_args.fsdp
         )
-        model.get_graph_tower().to(dtype=torch.float16, device=training_args.device)
+        model.get_graph_tower().to(dtype=compute_dtype, device=training_args.device)
+        model.get_model().graph_projector.to(
+            dtype=compute_dtype, device=training_args.device
+        )
         # graph_config = model_graph_dict['graph_config']
 
         # data_args.graph_token_len = model_graph_dict['graph_token_len']
@@ -916,6 +941,11 @@ def train():
         model.config.sep_graph_conv_front = data_args.sep_graph_conv_front
         model.initialize_graph_tokenizer(use_graph_start_end=model_args.use_graph_start_end, tokenizer=tokenizer, device=training_args.device,
                                           tune_graph_mlp_adapter=model_args.tune_graph_mlp_adapter, pretrain_graph_mlp_adapter=model_args.pretrain_graph_mlp_adapter)
+
+        # After tokenizer resize + graph projector, backbone may stay float16 (HF load) while graph
+        # branch uses float32 — Llama layers then get float32 hidden_states vs float16 q_proj weights.
+        if training_args.bits not in [4, 8] and not training_args.fp16 and not training_args.bf16:
+            model.float()
 
         params_no_grad = [n for n, p in model.named_parameters() if not p.requires_grad]
         if len(params_no_grad) > 0:

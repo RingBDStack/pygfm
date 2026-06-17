@@ -30,9 +30,9 @@ except ImportError as e:  # pragma: no cover
 
 
 class MultiGPromptRunConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
 
-    dataset: Literal["cora", "citeseer", "pubmed"] = Field(default="cora")
+    dataset: str = Field(default="cora")
     aug_type: str = Field(default="edge")
     drop_percent: float = Field(default=0.1, ge=0.0, le=1.0)
     seed: int = Field(default=39)
@@ -87,7 +87,6 @@ def parse_args(
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=["cora", "citeseer", "pubmed"],
         default=argparse.SUPPRESS,
     )
     parser.add_argument("--aug_type", type=str, default=argparse.SUPPRESS)

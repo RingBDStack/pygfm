@@ -6,6 +6,7 @@ LLaGA unified experiment entry (Python, few files). From repo root::
     python scripts/llaga/run.py smoke --max-steps 3
     python scripts/llaga/run.py deepspeed --model vicuna --task nc --dataset cora --bs 8 --emb simteg
     python scripts/llaga/run.py yaml -c configs/llaga/smoke.yaml
+    python scripts/llaga/run.py yaml-eval -c configs/llaga/02_eval_opt27b_cora.yaml   # run_yaml stage=eval
     python scripts/llaga/run.py download opt
     python scripts/llaga/run.py eval --model-path /path/to/projector --answers-file /path/to/out.jsonl --dataset arxiv --task nc
 
@@ -22,8 +23,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = driver_script_repo_root(__file__)
 _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
@@ -254,6 +256,56 @@ def cmd_deepspeed(args: argparse.Namespace, unknown: list[str]) -> int:
     return subprocess.call(cmd, cwd=_ROOT)
 
 
+def cmd_yaml_eval(args: argparse.Namespace) -> int:
+    """``run_yaml`` / flat temp YAML → :func:`cmd_eval` (same flags as ``run.py eval``)."""
+    from pathlib import Path
+
+    from pygfm.public.cli.yaml_config import load_yaml
+
+    flat = load_yaml(args.config)
+    if not isinstance(flat, dict):
+        raise TypeError("eval YAML must load to a mapping")
+
+    dr = flat.get("data_root")
+    if dr is not None and str(dr).strip():
+        p = Path(str(dr)).expanduser()
+        if not p.is_absolute():
+            p = (Path.cwd() / p).resolve()
+        else:
+            p = p.resolve()
+        os.environ["LLAGA_DATA_ROOT"] = str(p)
+
+    cd = flat.get("cache_dir")
+    if cd is not None and str(cd).strip():
+        p = Path(str(cd)).expanduser()
+        if not p.is_absolute():
+            p = (Path.cwd() / p).resolve()
+        else:
+            p = p.resolve()
+        os.environ["LLAGA_HF_CACHE"] = str(p)
+
+    mp = flat.get("model_path")
+    af = flat.get("answers_file")
+    if not mp:
+        raise ValueError("eval YAML must set eval.model_path (or top-level model_path)")
+    if not af:
+        raise ValueError("eval YAML must set eval.answers_file (or top-level answers_file)")
+
+    ns = argparse.Namespace(
+        model_path=str(mp),
+        model_base=str(flat.get("model_base") or "lmsys/vicuna-7b-v1.5-16k"),
+        conv_mode=str(flat.get("conv_mode") or "v1"),
+        dataset=str(flat.get("dataset") or "arxiv"),
+        task=str(flat.get("task") or "nc"),
+        emb=str(flat.get("emb") or flat.get("pretrained_embedding_type") or "simteg"),
+        use_hop=int(flat.get("use_hop", 4)),
+        sample_size=int(flat.get("sample_size", 10)),
+        template=str(flat.get("template") or "HO"),
+        answers_file=str(af),
+    )
+    return cmd_eval(ns)
+
+
 def cmd_eval(args: argparse.Namespace) -> int:
     cmd = [
         sys.executable,
@@ -403,7 +455,17 @@ def main(argv: list[str] | None = None) -> int:
         args = p.parse_args(tail)
         return cmd_yaml(args)
 
-    print(f"Unknown subcommand: {cmd!r}; use train|smoke|deepspeed|eval|download|yaml", file=sys.stderr)
+    if cmd == "yaml-eval":
+        p = argparse.ArgumentParser(prog="llaga-run yaml-eval")
+        p.add_argument("-c", "--config", type=str, required=True, metavar="PATH")
+        _add_yaml_export_flags(p)
+        args = p.parse_args(tail)
+        return cmd_yaml_eval(args)
+
+    print(
+        f"Unknown subcommand: {cmd!r}; use train|smoke|deepspeed|eval|download|yaml|yaml-eval",
+        file=sys.stderr,
+    )
     return 2
 
 

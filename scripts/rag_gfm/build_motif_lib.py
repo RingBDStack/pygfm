@@ -18,12 +18,14 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = driver_script_repo_root(__file__)
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pygfm.private.utlis.rag_gfm import MotifLibBuilderConfig, build_motif_lib
+from pygfm.public.cli.yaml_config import parse_args_with_optional_yaml
 
 
 def main():
@@ -57,7 +59,7 @@ def main():
     p.add_argument("--device", type=str, default="cuda", help="Device")
     p.add_argument("--seed", type=int, default=42, help="Random seed")
     p.add_argument("--no_cse_cache", action="store_true", help="Disable CSE cache")
-    args = p.parse_args()
+    args = parse_args_with_optional_yaml(p)
 
     # Relative paths resolved from repo root
     data_root = args.data_root

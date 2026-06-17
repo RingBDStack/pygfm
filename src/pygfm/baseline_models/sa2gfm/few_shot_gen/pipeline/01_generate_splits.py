@@ -20,13 +20,22 @@ from tqdm import tqdm
 from pygfm.baseline_models.sa2gfm.paths import paths
 from pygfm.public.utils import set_seed
 from pygfm.public.cli.yaml_config import parse_args_with_config
+from pygfm.public.utils.runtime import _maybe_hetero_to_homogeneous, _torch_load_to_single_data
 
 
 def _load_graph(data_path: Path):
     try:
-        return torch.load(data_path, map_location="cpu", weights_only=False)
+        raw = torch.load(data_path, map_location="cpu", weights_only=False)
     except TypeError:
-        return torch.load(data_path, map_location="cpu")
+        raw = torch.load(data_path, map_location="cpu")
+    raw = _maybe_hetero_to_homogeneous(raw)
+    data = _torch_load_to_single_data(raw)
+    data = _maybe_hetero_to_homogeneous(data)
+    if getattr(data, "y", None) is None:
+        raise ValueError(
+            f"No node labels `y` after load ({data_path!r}); few-shot split generation requires `y`."
+        )
+    return data
 
 
 def get_label_indices(labels, n_way: int, exclude_last_n: int):

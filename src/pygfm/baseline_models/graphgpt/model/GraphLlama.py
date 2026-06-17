@@ -84,8 +84,17 @@ class GraphLlamaModel(LlamaModel):
             # HACK: for FSDP
             # self.vision_tower = [CLIPVisionModel.from_pretrained(config.graph_tower)]
             # self.arxiv_projector = nn.Linear(config.graph_hidden_size, config.hidden_size)
-            if config.graph_tower == 'MPNN': 
-                self.graph_tower = MPNN(in_channels = config.graph_hidden_size, hidden_channels = config.graph_hidden_size * 2, out_channels = config.graph_hidden_size, dropout = 0.1, num_layers = 2, if_param = False)
+            if config.graph_tower == 'MPNN':
+                if not hasattr(config, "graph_hidden_size"):
+                    config.graph_hidden_size = 128
+                self.graph_tower = MPNN(
+                    in_channels=config.graph_hidden_size,
+                    hidden_channels=config.graph_hidden_size * 2,
+                    out_channels=config.graph_hidden_size,
+                    dropout=0.1,
+                    num_layers=2,
+                    if_param=False,
+                )
             elif config.graph_tower == "clip_gcn_arxiv": 
 
                 clip_graph, args= load_model_pretrained(CLIP, config.pretrain_graph_model_path)
@@ -123,8 +132,17 @@ class GraphLlamaModel(LlamaModel):
 
 
         if not hasattr(self, 'graph_tower'):
-            if self.config.graph_tower == 'MPNN': 
-                graph_tower = MPNN(in_channels = self.config.graph_hidden_size, hidden_channels = self.config.graph_hidden_size * 2, out_channels = self.config.graph_hidden_size, dropout = 0.1, num_layers = 2, if_param = False)
+            if self.config.graph_tower == 'MPNN':
+                if not hasattr(self.config, "graph_hidden_size"):
+                    self.config.graph_hidden_size = 128
+                graph_tower = MPNN(
+                    in_channels=self.config.graph_hidden_size,
+                    hidden_channels=self.config.graph_hidden_size * 2,
+                    out_channels=self.config.graph_hidden_size,
+                    dropout=0.1,
+                    num_layers=2,
+                    if_param=False,
+                )
             elif self.config.graph_tower == "clip_gcn_arxiv": 
 
                 clip_graph, args= load_model_pretrained(CLIP, self.config.pretrain_graph_model_path)
@@ -228,13 +246,21 @@ class GraphLlamaModel(LlamaModel):
                 else:
                     raise ValueError(f'graph_node_reps is expected to be a list but got {type(graph_data)}')
             if type(graph_data) is list:
-                # if type(graph_node_features[0]) is not dict:
-                graph_node_features = [self.graph_projector(node_feature) for node_feature in graph_node_features]
+                # Align with graph_projector weights (node feats from .pt may be float16).
+                _gp_dt = self.graph_projector.weight.dtype
+                graph_node_features = [
+                    self.graph_projector(f.to(dtype=_gp_dt)) for f in graph_node_features
+                ]
                 # else: 
                 #     graph_node_features = [{'graph_1': self.graph_projector(node_feature['graph_1']), 'graph_2': self.graph_projector(node_feature['graph_2'])} for node_feature in graph_node_features]
             else:
                 raise ValueError(f'graph_node_reps is expected to be a list but got {type(graph_data)}')
-            dummy_graph_features = torch.zeros(256, 128, device=inputs_embeds.device, dtype=inputs_embeds.dtype)
+            dummy_graph_features = torch.zeros(
+                256,
+                128,
+                device=inputs_embeds.device,
+                dtype=self.graph_projector.weight.dtype,
+            )
             dummy_graph_features = self.graph_projector(dummy_graph_features)
 
             new_input_embeds = []

@@ -15,6 +15,7 @@ import os
 import sys
 import warnings
 from pathlib import Path
+from pygfm.public.repo_paths import driver_script_repo_root
 
 import numpy as np
 import scipy.sparse as sp
@@ -22,7 +23,7 @@ import torch
 from torch_geometric.data import Batch, Data
 from torch_geometric.utils import subgraph
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = driver_script_repo_root(__file__)
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
